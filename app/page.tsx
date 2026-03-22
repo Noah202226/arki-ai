@@ -1,65 +1,114 @@
-import Image from "next/image";
+"use client";
+
+import { api } from "@/convex/_generated/api";
+import { SignInButton, UserButton } from "@clerk/nextjs";
+import {
+  Authenticated,
+  Unauthenticated,
+  useMutation,
+  useQuery,
+} from "convex/react";
+import { useState } from "react";
 
 export default function Home() {
+  const tasks = useQuery(api.tasks.get);
+  const addTask = useMutation(api.tasks.add);
+  const toggleTask = useMutation(api.tasks.toggle);
+  const deleteTask = useMutation(api.tasks.remove);
+
+  const [newTask, setNewTask] = useState("");
+
+  const handleSubmit = async (e: React.SubmitEvent) => {
+    e.preventDefault();
+    if (!newTask.trim()) return;
+
+    await addTask({ text: newTask });
+
+    setNewTask("");
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main className="flex min-h-screen flex-col items-center p-24">
+      {/* Auth Header */}
+      <div className="absolute top-4 right-4">
+        <Unauthenticated>
+          <SignInButton mode="modal">
+            <button className="px-4 py-2 bg-blue-600 text-white rounded-md">
+              Log In
+            </button>
+          </SignInButton>
+        </Unauthenticated>
+        <Authenticated>
+          <UserButton />
+        </Authenticated>
+      </div>
+
+      <h1 className="text-4xl font-bold mb-8">My Tasks</h1>
+
+      {/* Add Task Form */}
+      <Authenticated>
+        <form
+          onSubmit={handleSubmit}
+          className="mb-8 flex gap-2 w-full max-w-md"
+        >
+          <input
+            type="text"
+            value={newTask}
+            onChange={(e) => setNewTask(e.target.value)}
+            placeholder="What needs to be done?"
+            className="flex-1 p-2 border rounded-md text-black"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+            Add
+          </button>
+        </form>
+
+        {tasks === undefined ? (
+          <p>Loading...</p>
+        ) : (
+          <ul className="space-y-4">
+            {tasks.map((task) => (
+              <li
+                key={task._id}
+                className="p-4 bg-gray-100 rounded-md shadow text-black"
+              >
+                {/* Left side: Checkbox and Text */}
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={task.isCompleted}
+                    // When the checkbox changes, we pass the task's unique _id to our toggle mutation
+                    onChange={() => toggleTask({ id: task._id })}
+                    className="w-5 h-5 cursor-pointer"
+                  />
+                  <span
+                    className={
+                      task.isCompleted ? "line-through text-gray-400" : ""
+                    }
+                  >
+                    {task.text}
+                  </span>
+                </div>
+                <button
+                  // When clicked, we pass the task's unique _id to our remove mutation
+                  onClick={() => deleteTask({ id: task._id })}
+                  className="text-red-500 hover:text-red-700 font-bold px-2 py-1"
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Authenticated>
+
+      {/* Show a message if they are logged out */}
+      <Unauthenticated>
+        <p className="text-gray-500">Please log in to see your tasks.</p>
+      </Unauthenticated>
+    </main>
   );
 }
