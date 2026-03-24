@@ -16,10 +16,13 @@ export default defineSchema({
     type: v.string(), // "income" or "expense"
     category: v.string(), // Idagdag ito
     accountId: v.id("accounts"), // Idagdag ito para ma-link sa Wallet
+    creditId: v.optional(v.id("credits")),
     status: v.string(), // "completed", "pending", "paid"
     frequency: v.string(),
     dueDate: v.number(),
-  }).index("by_userId_and_date", ["userId", "dueDate"]),
+  })
+    .index("by_userId_and_date", ["userId", "dueDate"])
+    .index("by_account", ["accountId"]),
 
   // 2. ACCOUNTS TABLE (Balances: GCash, Bank, etc.)
   accounts: defineTable({

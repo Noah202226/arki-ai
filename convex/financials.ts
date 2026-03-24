@@ -58,11 +58,15 @@ export const addTransaction = mutation({
     type: v.string(),
     category: v.string(),
     accountId: v.id("accounts"),
+    creditId: v.optional(v.id("credits")),
     date: v.number(), // Ito ay gagamitin natin bilang dueDate
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthenticated");
+
+    // Default to Date.now() kung walang pinasang date mula sa frontend
+    const transactionDate = args.date ?? Date.now();
 
     // 1. Insert Transaction (Siguraduhing match sa schema fields lang)
     const id = await ctx.db.insert("financials", {
@@ -72,9 +76,10 @@ export const addTransaction = mutation({
       type: args.type,
       category: args.category,
       accountId: args.accountId,
+      creditId: args.creditId,
       status: "completed",
       frequency: "one-time",
-      dueDate: args.date, // Ginamit natin yung date mula sa form
+      dueDate: transactionDate, // Ginamit natin yung date mula sa form
     });
 
     // 2. Update Account Balance
@@ -130,5 +135,21 @@ export const remove = mutation({
   args: { id: v.id("financials") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id);
+  },
+});
+
+//Get transaction by Account
+export const getTransactionsByAccount = query({
+  args: { accountId: v.id("accounts") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    return await ctx.db
+      .query("financials")
+      // Siguraduhing may index ka sa schema.rb para sa accountId
+      .withIndex("by_account", (q) => q.eq("accountId", args.accountId))
+      .order("desc")
+      .collect();
   },
 });

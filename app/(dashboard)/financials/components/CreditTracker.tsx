@@ -26,6 +26,7 @@ import { AddTransactionDialog } from "./AddTransactionDialog";
 import { deleteCredit } from "@/convex/credits";
 import { useState } from "react";
 import { EditCreditDialog } from "./EditCreditDialog";
+import { format } from "date-fns";
 
 export function CreditTracker() {
   const credits = useQuery(api.credits.getCreditSummary);
@@ -89,7 +90,7 @@ export function CreditTracker() {
       </Card>
 
       {/* 3. Individual Loan Cards (Patrick, Gloan, etc.) */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-1">
         {credits.map((loan) => {
           const progress = (loan.totalPaid / loan.totalAmount) * 100;
           const isCritical = loan.remainingMonths <= 2;
@@ -179,6 +180,17 @@ export function CreditTracker() {
                     Paid: ₱{loan.totalPaid.toLocaleString()}
                   </div>
                 </div>
+
+                {/* --- ADD THIS PART --- */}
+                <details className="group/details">
+                  <summary className="list-none cursor-pointer flex items-center justify-center gap-1 text-[10px] text-slate-400 hover:text-orange-500 font-bold uppercase transition-all py-1">
+                    <span>View Payment History</span>
+                    <MoreVertical className="w-3 h-3 rotate-90 group-open/details:rotate-0 transition-transform" />
+                  </summary>
+
+                  {/* Dito papasok yung transaction list flow */}
+                  <CreditTransactionFlow creditorName={loan.creditorName} />
+                </details>
               </CardContent>
             </Card>
           );
@@ -192,6 +204,53 @@ export function CreditTracker() {
           onOpenChange={setIsEditOpen}
         />
       )}
+    </div>
+  );
+}
+
+function CreditTransactionFlow({ creditorName }: { creditorName: string }) {
+  // Kunin lahat ng transactions (Dapat may query ka na nagfi-filter by title/category)
+  // O pwede mong gamitin ang existing getTransactions at i-filter sa frontend
+  const allTransactions = useQuery(api.financials.getTransactions);
+
+  if (!allTransactions)
+    return <div className="text-[10px] animate-pulse">Loading payments...</div>;
+
+  // I-filter lang ang mga transactions na para sa loan na ito
+  const payments = allTransactions
+    .filter((tx) => tx.title === `Payment for ${creditorName}`)
+    .sort((a, b) => b.dueDate - a.dueDate);
+
+  if (payments.length === 0)
+    return (
+      <p className="text-[10px] text-muted-foreground italic">
+        No payment history yet.
+      </p>
+    );
+
+  return (
+    <div className="mt-4 border-t pt-3 space-y-2">
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+        Payment History
+      </p>
+      {payments.map((p) => (
+        <div
+          key={p._id}
+          className="flex justify-between items-center text-xs py-1 border-b border-slate-50 last:border-0"
+        >
+          <div className="flex flex-col">
+            <span className="font-medium text-slate-700">
+              {format(p.dueDate, "MMM dd, yyyy")}
+            </span>
+            <span className="text-[9px] text-slate-400 uppercase">
+              {p.category}
+            </span>
+          </div>
+          <span className="font-bold text-red-600">
+            - ₱{p.amount.toLocaleString()}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

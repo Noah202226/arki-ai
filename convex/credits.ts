@@ -41,14 +41,11 @@ export const getCreditSummary = query({
 
     // 3. I-map ang payments sa kaukulang credit base sa title
     return credits.map((credit) => {
-      const paymentsForThisCredit = allPayments.filter((p) =>
-        p.title.toLowerCase().includes(credit.creditorName.toLowerCase()),
+      const payments = allPayments.filter(
+        (tx) => tx.creditId === credit._id && tx.type === "expense",
       );
 
-      const totalPaid = paymentsForThisCredit.reduce(
-        (sum, p) => sum + p.amount,
-        0,
-      );
+      const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
       const remainingBalance = credit.totalAmount - totalPaid;
 
       // Excel-style calculation for remaining months

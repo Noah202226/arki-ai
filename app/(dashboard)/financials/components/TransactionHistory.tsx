@@ -26,7 +26,7 @@ export function TransactionHistory() {
               <td className="p-3">
                 <p className="font-medium">{tx.title}</p>
                 <p className="text-xs text-muted-foreground">
-                  {format(tx._creationTime, "MMM dd, yyyy")}
+                  {format(tx.dueDate, "MMM dd, yyyy")}
                 </p>
               </td>
               <td className="p-3 uppercase text-xs font-semibold tracking-wider">

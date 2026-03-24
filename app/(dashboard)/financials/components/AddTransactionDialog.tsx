@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
@@ -24,16 +24,27 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Loader2 } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+// Icons
+import { Plus, Loader2, Calendar as CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 export function AddTransactionDialog({
   initialTitle = "",
   initialCategory = "General",
+  creditId,
 }: {
   initialTitle?: string;
   initialCategory?: string;
+  creditId?: string;
 }) {
-  const { user } = useUser();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -47,6 +58,16 @@ export function AddTransactionDialog({
   const [amount, setAmount] = useState("");
   const [accountId, setAccountId] = useState("");
   const [category, setCategory] = useState(initialCategory);
+  const [date, setDate] = useState<Date>(new Date()); // Default to today
+
+  useEffect(() => {
+    if (open) {
+      setTitle(initialTitle);
+      setCategory(initialCategory);
+      setDate(new Date());
+      setAmount(""); // Siguraduhin na laging malinis ang amount
+    }
+  }, [open, initialTitle, initialCategory]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,12 +81,11 @@ export function AddTransactionDialog({
         type,
         category,
         accountId: accountId as any,
-        date: Date.now(),
+        creditId: creditId as any,
+        date: date.getTime(),
       });
       setOpen(false);
       // Reset Form
-      setTitle("");
-      setAmount("");
     } catch (error) {
       console.error("Failed to add transaction:", error);
     } finally {
@@ -103,6 +123,33 @@ export function AddTransactionDialog({
               </TabsTrigger>
             </TabsList>
           </Tabs>
+
+          {/* DATE PICKER FIELD */}
+          <div className="space-y-2 flex flex-col">
+            <Label>Date of Transaction</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !date && "text-muted-foreground",
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(date, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={(d) => d && setDate(d)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
 
           <div className="space-y-2">
             <Label>Description</Label>
