@@ -36,9 +36,11 @@ export const getCreditSummary = query({
     if (!identity) return [];
 
     // 1. Kunin lahat ng credits (Patrick, Gloan, etc.)
+    // Sa loob ng getCreditSummary query
     const credits = await ctx.db
       .query("credits")
       .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .filter((q) => q.eq(q.field("status"), "ongoing")) // Pakita lang ang active
       .collect();
 
     // 2. Kunin lahat ng "Debt Payment" transactions
@@ -93,5 +95,23 @@ export const deleteCredit = mutation({
   args: { id: v.id("credits") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id);
+  },
+});
+
+export const archiveCredit = mutation({
+  args: { id: v.id("credits") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    const existing = await ctx.db.get(args.id);
+
+    if (!existing || existing.userId !== identity?.subject) {
+      throw new Error("Unauthorized");
+    }
+
+    // Palitan ang status sa archived
+    await ctx.db.patch(args.id, {
+      status: "archived",
+      archivedAt: Date.now(), // Optional: para alam mo kung kailan natapos bayaran
+    });
   },
 });

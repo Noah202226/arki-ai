@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils";
 export function CreditTracker() {
   const credits = useQuery(api.credits.getCreditSummary);
   const removeCredit = useMutation(api.credits.deleteCredit);
+  const archive = useMutation(api.credits.archiveCredit);
 
   const [selectedCredit, setSelectedCredit] = useState<any>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -148,6 +149,8 @@ export function CreditTracker() {
       {/* 3. Individual Credits */}
       <div className="grid gap-4 sm:grid-cols-2">
         {credits.map((loan) => {
+          const isFullyPaid = loan.remainingBalance <= 0;
+
           const now = new Date();
           const hasDueDate =
             loan.dueDate !== undefined && loan.dueDate !== null;
@@ -171,11 +174,25 @@ export function CreditTracker() {
           return (
             <Card
               key={loan._id}
-              className="group border shadow-none hover:border-orange-500/30 transition-all flex flex-col"
+              className={cn(
+                "group border transition-all",
+                isFullyPaid
+                  ? "bg-green-50/30 border-green-200"
+                  : "hover:border-orange-500/30",
+              )}
             >
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
+                    <div className="flex gap-2 items-center">
+                      <CardTitle>{loan.creditorName}</CardTitle>
+                      {isFullyPaid && (
+                        <Badge className="bg-green-600 hover:bg-green-700">
+                          FULLY PAID
+                        </Badge>
+                      )}
+                    </div>
+
                     <div className="flex items-center gap-2">
                       <CardTitle>{loan.creditorName}</CardTitle>
                       <Badge
@@ -271,60 +288,114 @@ export function CreditTracker() {
                   </div>
                 </div>
 
-                {/* ADD PAYMENT BUTTON - Integrated here */}
-                <div className="pt-2 flex items-center gap-2">
-                  <AddTransactionDialog
-                    initialCategory="expense"
-                    initialTitle={`Payment for ${loan.creditorName}`}
-                    creditId={loan._id}
-                  />
+                {isFullyPaid ? (
+                  <Button
+                    onClick={() => archive({ id: loan._id })}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold gap-2 shadow-lg shadow-green-100"
+                  >
+                    <TrendingDown className="w-4 h-4 rotate-180" />
+                    Archive Completed Loan
+                  </Button>
+                ) : (
+                  <div className="pt-2 flex items-center gap-2">
+                    <AddTransactionDialog
+                      initialCategory="expense"
+                      initialTitle={`Payment for ${loan.creditorName}`}
+                      creditId={loan._id}
+                    />
 
-                  <div className="flex-1" />
+                    <div className="flex-1" />
 
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-[10px] font-bold uppercase gap-1.5 text-slate-400 hover:text-orange-600"
-                      >
-                        <History className="w-3 h-3" />
-                        History
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent className="w-full sm:max-w-md border-l shadow-2xl overflow-y-auto">
-                      <SheetHeader className="border-b pb-4 mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="bg-orange-100 p-2 rounded-full text-orange-600">
-                            <History className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <SheetTitle className="text-xl">
-                              Repayment History
-                            </SheetTitle>
-                            <SheetDescription className="text-xs">
-                              Transaction logs for{" "}
-                              <strong>{loan.creditorName}</strong>
-                            </SheetDescription>
+                    <Sheet>
+                      <SheetTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-[10px] font-bold uppercase gap-1.5 text-slate-400 hover:text-orange-600"
+                        >
+                          <History className="w-3 h-3" />
+                          History
+                        </Button>
+                      </SheetTrigger>
+                      <SheetContent className="w-full sm:max-w-md border-l shadow-2xl flex flex-col p-0">
+                        {/* 1. STICKY HEADER WITH SUMMARY */}
+                        <div className="p-6 border-b bg-slate-50/50">
+                          <SheetHeader className="text-left mb-6">
+                            <div className="flex items-center gap-3">
+                              <div className="bg-orange-600 p-2 rounded-xl text-white shadow-lg shadow-orange-200">
+                                <History className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <SheetTitle className="text-xl font-bold">
+                                  Repayment History
+                                </SheetTitle>
+                                <SheetDescription className="text-xs font-medium text-slate-500">
+                                  Tracking payments for{" "}
+                                  <span className="text-orange-600 font-bold">
+                                    {loan.creditorName}
+                                  </span>
+                                </SheetDescription>
+                              </div>
+                            </div>
+                          </SheetHeader>
+
+                          {/* MINI DASHBOARD SA LOOB NG SIDEBAR */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-white p-4 rounded-2xl border shadow-sm">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                Total Paid
+                              </p>
+                              <p className="text-lg font-black text-green-600 font-mono">
+                                ₱{loan.totalPaid.toLocaleString()}
+                              </p>
+                            </div>
+                            <div className="bg-white p-4 rounded-2xl border shadow-sm">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                Remaining
+                              </p>
+                              <p className="text-lg font-black text-red-600 font-mono">
+                                ₱{loan.remainingBalance.toLocaleString()}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </SheetHeader>
 
-                      {/* Tawagin ang list dito */}
-                      <CreditTransactionFlow
-                        creditorName={loan.creditorName}
-                        creditId={loan._id}
-                      />
+                        {/* 2. SCROLLABLE TRANSACTION LIST */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">
+                              Transaction Logs
+                            </h4>
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] font-bold bg-slate-100 border-none"
+                            >
+                              {loan.remainingMonths} Months Left
+                            </Badge>
+                          </div>
 
-                      <div className="mt-8 p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                        <p className="text-[10px] text-slate-500 text-center font-medium">
-                          Only "Expense" transactions linked to this credit ID
-                          are shown.
-                        </p>
-                      </div>
-                    </SheetContent>
-                  </Sheet>
-                </div>
+                          <CreditTransactionFlow
+                            creditorName={loan.creditorName}
+                            creditId={loan._id}
+                          />
+                        </div>
+
+                        {/* 3. FOOTER ACTION */}
+                        <div className="p-6 border-t bg-slate-50/50">
+                          <Button
+                            variant="outline"
+                            className="w-full border-dashed border-slate-300 text-slate-500 hover:text-orange-600 hover:border-orange-200 transition-all"
+                            onClick={() => {
+                              /* Pwede mo itrigger dito ang export to PDF sa future */
+                            }}
+                          >
+                            Generate Payment Report
+                          </Button>
+                        </div>
+                      </SheetContent>
+                    </Sheet>
+                  </div>
+                )}
               </CardContent>
             </Card>
           );

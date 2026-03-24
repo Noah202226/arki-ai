@@ -54,5 +54,6 @@ export default defineSchema({
     category: v.optional(v.string()), // e.g., "Credit Card", "Personal Loan", "Saan-saan"
     status: v.string(),
     totalPaid: v.number(),
+    archivedAt: v.optional(v.number()),
   }).index("by_userId", ["userId"]),
 });
