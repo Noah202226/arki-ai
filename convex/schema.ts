@@ -50,6 +50,9 @@ export default defineSchema({
     interest: v.number(),
     monthlyInstallment: v.number(),
     startDate: v.number(),
+    dueDate: v.number(), // Dito natin ilalagay ang araw (e.g., 15 kung tuwing ika-15 ang bayad)
+    category: v.optional(v.string()), // e.g., "Credit Card", "Personal Loan", "Saan-saan"
     status: v.string(),
+    totalPaid: v.number(),
   }).index("by_userId", ["userId"]),
 });

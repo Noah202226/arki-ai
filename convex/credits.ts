@@ -7,16 +7,25 @@ export const addCredit = mutation({
     totalAmount: v.number(),
     interest: v.number(),
     monthlyInstallment: v.number(),
+    dueDate: v.number(),
+    category: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthenticated");
 
+    // I-insert ang bagong credit record
     return await ctx.db.insert("credits", {
-      ...args,
       userId: identity.subject,
+      creditorName: args.creditorName,
+      totalAmount: args.totalAmount,
+      interest: args.interest,
+      monthlyInstallment: args.monthlyInstallment,
+      dueDate: args.dueDate,
+      category: args.category ?? "General",
       startDate: Date.now(),
-      status: "ongoing",
+      status: "ongoing", // Default status
+      totalPaid: 0, // Mahalaga ito para sa initial calculation ng progress
     });
   },
 });

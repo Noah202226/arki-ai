@@ -6,6 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetDescription,
+} from "@/components/ui/sheet";
+
+import {
   CreditCard,
   Calendar,
   MoreVertical,
@@ -15,6 +24,7 @@ import {
   History,
   TrendingDown,
   AlertCircle,
+  PlusCircle,
 } from "lucide-react";
 import { AddCreditDialog } from "./AddCreditDialog";
 import {
@@ -22,6 +32,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { AddTransactionDialog } from "./AddTransactionDialog";
@@ -59,7 +70,7 @@ export function CreditTracker() {
 
   return (
     <div className="space-y-6 max-w-full overflow-hidden px-1">
-      {/* 1. Unified Dashboard Header */}
+      {/* 1. Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -72,12 +83,10 @@ export function CreditTracker() {
         </div>
         <AddCreditDialog />
       </div>
-
-      {/* 2. All-in-One Summary Card */}
+      {/* 2. Summary Card */}
       <Card className="bg-slate-950 text-white border-none shadow-xl overflow-hidden relative">
         <CardContent className="p-6 md:p-8 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-            {/* Left: Progress Circle/Text */}
             <div className="md:col-span-4 space-y-4 border-b md:border-b-0 md:border-r border-white/10 pb-6 md:pb-0">
               <div>
                 <p className="text-slate-400 text-[10px] uppercase tracking-[0.2em] font-bold">
@@ -98,7 +107,6 @@ export function CreditTracker() {
               />
             </div>
 
-            {/* Middle: Key Financials */}
             <div className="md:col-span-5 grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">
@@ -118,7 +126,6 @@ export function CreditTracker() {
               </div>
             </div>
 
-            {/* Right: Creditor Count Badge */}
             <div className="md:col-span-3 flex md:justify-end">
               <div className="bg-white/5 rounded-2xl p-4 flex items-center gap-4 border border-white/10 w-full md:w-auto">
                 <div className="bg-orange-500/20 p-2 rounded-full">
@@ -136,62 +143,88 @@ export function CreditTracker() {
             </div>
           </div>
         </CardContent>
-        {/* Background Icon Decoration */}
         <TrendingDown className="absolute -right-6 -bottom-6 w-32 h-32 text-white/3 -rotate-12" />
       </Card>
-
-      {/* 3. Individual Credits (2-column layout for better visibility) */}
+      {/* 3. Individual Credits */}
       <div className="grid gap-4 sm:grid-cols-2">
         {credits.map((loan) => {
+          const now = new Date();
+          const hasDueDate =
+            loan.dueDate !== undefined && loan.dueDate !== null;
+          const dueDay = hasDueDate ? loan.dueDate : 1;
+          const nextPayment = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            dueDay,
+          );
+
+          if (now.getDate() > dueDay) {
+            nextPayment.setMonth(nextPayment.getMonth() + 1);
+          }
+
+          const isUrgent =
+            Math.abs(nextPayment.getTime() - now.getTime()) <
+            3 * 24 * 60 * 60 * 1000;
+          const isValidTime = !isNaN(nextPayment.getTime());
           const progress = (loan.totalPaid / loan.totalAmount) * 100;
+
           return (
             <Card
               key={loan._id}
               className="group border shadow-none hover:border-orange-500/30 transition-all flex flex-col"
             >
-              <CardHeader className="flex flex-row items-center justify-between pb-3">
-                <div className="space-y-1">
-                  <CardTitle className="text-base font-bold uppercase tracking-tight">
-                    {loan.creditorName}
-                  </CardTitle>
-                  <p className="text-[11px] font-medium text-muted-foreground italic">
-                    ₱{loan.monthlyInstallment.toLocaleString()}/mo
-                  </p>
-                </div>
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <CardTitle>{loan.creditorName}</CardTitle>
+                      <Badge
+                        variant="outline"
+                        className="text-[9px] uppercase py-0 px-1.5 h-4 border-slate-200 text-slate-500"
+                      >
+                        {loan.category || "General"}
+                      </Badge>
+                    </div>
+                    {hasDueDate && isValidTime ? (
+                      <p
+                        className={cn(
+                          "text-[10px] font-bold px-2 py-0.5 rounded-full w-fit",
+                          isUrgent
+                            ? "bg-red-100 text-red-600 animate-pulse"
+                            : "bg-slate-100 text-slate-500",
+                        )}
+                      >
+                        NEXT: {format(nextPayment, "MMM dd, yyyy")}
+                      </p>
+                    ) : (
+                      <p className="text-[10px] bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded-full w-fit">
+                        ⚠️ SET DUE DAY
+                      </p>
+                    )}
+                  </div>
 
-                <div className="flex items-center gap-1">
-                  <AddTransactionDialog
-                    initialTitle={`Payment for ${loan.creditorName}`}
-                    initialCategory="Debt Payment"
-                    creditId={loan._id}
-                  />
+                  {/* ACTION MENU */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-full"
-                      >
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="w-40">
                       <DropdownMenuItem
                         onClick={() => {
                           setSelectedCredit(loan);
                           setIsEditOpen(true);
                         }}
                       >
-                        <Edit2 className="w-3.5 h-3.5 mr-2" /> Edit Details
+                        <Edit2 className="mr-2 h-4 w-4" /> Edit Details
                       </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        className="text-red-600"
-                        onClick={async () => {
-                          if (confirm(`Burahin ang "${loan.creditorName}"?`))
-                            await removeCredit({ id: loan._id });
-                        }}
+                        className="text-red-600 focus:text-red-600"
+                        onClick={() => removeCredit({ id: loan._id })}
                       >
-                        <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete Record
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -202,7 +235,7 @@ export function CreditTracker() {
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-2">
                   <div className="flex justify-between items-end">
                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                      Repayment
+                      Progress
                     </span>
                     <span
                       className={cn(
@@ -210,7 +243,7 @@ export function CreditTracker() {
                         progress >= 100 ? "text-green-600" : "text-orange-600",
                       )}
                     >
-                      {progress.toFixed(0)}% COMPLETE
+                      {progress.toFixed(0)}%
                     </span>
                   </div>
                   <Progress
@@ -222,7 +255,7 @@ export function CreditTracker() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
-                      Balance Left
+                      Balance
                     </p>
                     <p className="text-sm font-bold text-red-600 font-mono">
                       ₱{loan.remainingBalance.toLocaleString()}
@@ -230,37 +263,73 @@ export function CreditTracker() {
                   </div>
                   <div className="border-l pl-3">
                     <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
-                      Total Paid
+                      Months Left
                     </p>
-                    <p className="text-sm font-bold text-green-600 font-mono">
-                      ₱{loan.totalPaid.toLocaleString()}
+                    <p className="text-sm font-bold text-slate-700 font-mono">
+                      {loan.remainingMonths} Mo.
                     </p>
                   </div>
                 </div>
 
-                <div className="pt-2 flex flex-col gap-3">
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 bg-slate-100/80 w-fit px-2 py-1 rounded">
-                    <Calendar className="w-3 h-3 text-orange-600" />
-                    {loan.remainingMonths} MONTHS REMAINING
-                  </div>
+                {/* ADD PAYMENT BUTTON - Integrated here */}
+                <div className="pt-2 flex items-center gap-2">
+                  <AddTransactionDialog
+                    initialCategory="expense"
+                    initialTitle={`Payment for ${loan.creditorName}`}
+                    creditId={loan._id}
+                  />
 
-                  <details className="group/details border-t pt-2">
-                    <summary className="list-none cursor-pointer flex items-center justify-between text-[10px] text-slate-400 hover:text-orange-600 font-bold uppercase transition-all py-1">
-                      <div className="flex items-center gap-1.5">
+                  <div className="flex-1" />
+
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-[10px] font-bold uppercase gap-1.5 text-slate-400 hover:text-orange-600"
+                      >
                         <History className="w-3 h-3" />
-                        View History
+                        History
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent className="w-full sm:max-w-md border-l shadow-2xl overflow-y-auto">
+                      <SheetHeader className="border-b pb-4 mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-orange-100 p-2 rounded-full text-orange-600">
+                            <History className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <SheetTitle className="text-xl">
+                              Repayment History
+                            </SheetTitle>
+                            <SheetDescription className="text-xs">
+                              Transaction logs for{" "}
+                              <strong>{loan.creditorName}</strong>
+                            </SheetDescription>
+                          </div>
+                        </div>
+                      </SheetHeader>
+
+                      {/* Tawagin ang list dito */}
+                      <CreditTransactionFlow
+                        creditorName={loan.creditorName}
+                        creditId={loan._id}
+                      />
+
+                      <div className="mt-8 p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        <p className="text-[10px] text-slate-500 text-center font-medium">
+                          Only "Expense" transactions linked to this credit ID
+                          are shown.
+                        </p>
                       </div>
-                      <ChevronDown className="w-3.5 h-3.5 group-open/details:rotate-180 transition-transform" />
-                    </summary>
-                    <CreditTransactionFlow creditorName={loan.creditorName} />
-                  </details>
+                    </SheetContent>
+                  </Sheet>
                 </div>
               </CardContent>
             </Card>
           );
         })}
       </div>
-
       {selectedCredit && (
         <EditCreditDialog
           credit={selectedCredit}
@@ -272,36 +341,39 @@ export function CreditTracker() {
   );
 }
 
-function CreditTransactionFlow({ creditorName }: { creditorName: string }) {
+function CreditTransactionFlow({
+  creditorName,
+  creditId,
+}: {
+  creditorName: string;
+  creditId: string;
+}) {
   const allTransactions = useQuery(api.financials.getTransactions);
 
   if (!allTransactions)
-    return (
-      <div className="py-2 animate-pulse">
-        <div className="h-3 w-full bg-slate-50 rounded" />
-      </div>
-    );
+    return <div className="py-2 animate-pulse h-4 bg-slate-50 rounded" />;
 
+  // Filter based on creditId (mas accurate kaysa title matching)
   const payments = allTransactions
-    .filter((tx) => tx.title === `Payment for ${creditorName}`)
+    .filter((tx) => tx.creditId === creditId)
     .sort((a, b) => b.dueDate - a.dueDate);
 
   if (payments.length === 0)
     return (
-      <p className="text-[10px] text-muted-foreground italic py-2 pl-4 border-l-2">
-        No payments yet.
+      <p className="text-[10px] text-muted-foreground italic py-2">
+        No payments recorded.
       </p>
     );
 
   return (
-    <div className="mt-2 space-y-1 border-l-2 border-orange-100 pl-4">
+    <div className="space-y-1 max-h-40 overflow-y-auto pr-2">
       {payments.map((p) => (
         <div
           key={p._id}
           className="flex justify-between items-center text-xs py-1.5 border-b border-slate-50 last:border-0"
         >
-          <span className="font-bold text-slate-600 text-[10px]">
-            {format(p.dueDate, "MMM dd, yyyy")}
+          <span className="text-slate-600 text-[10px] font-medium">
+            {p.dueDate ? format(new Date(p.dueDate), "MMM dd, yyyy") : "---"}
           </span>
           <span className="font-black text-red-500 font-mono">
             ₱{p.amount.toLocaleString()}
