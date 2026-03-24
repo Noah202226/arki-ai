@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { FileText, Plus } from "lucide-react";
 
 export default function FinancialsPage() {
+  console.log("checkig");
   return (
     <div className="space-y-8 pb-10 max-w-400 mx-auto">
       {/* 1. Header Area */}
@@ -39,7 +40,12 @@ export default function FinancialsPage() {
       {/* 3. Main Dashboard Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* LEFT COLUMN: Transaction History (7/12 space) */}
-        <div className="lg:col-span-7 space-y-6">
+        <div className="lg:col-span-5 space-y-6">
+          {/* Account/Wallet List */}
+          <section className="space-y-4">
+            <AccountList />
+          </section>
+
           <div className="bg-white dark:bg-slate-900 rounded-2xl border shadow-sm overflow-hidden">
             <div className="p-6 border-b flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
               <h3 className="font-bold text-lg">Transaction History</h3>
@@ -54,15 +60,10 @@ export default function FinancialsPage() {
         </div>
 
         {/* RIGHT COLUMN: Credits & Wallets (5/12 space) */}
-        <div className="lg:col-span-5 space-y-8">
+        <div className="lg:col-span-7 space-y-8">
           {/* Credit Monitoring Section (The Excel Replacement) */}
           <section className="bg-slate-50/50 dark:bg-slate-900/50 p-6 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
             <CreditTracker />
-          </section>
-
-          {/* Account/Wallet List */}
-          <section className="space-y-4">
-            <AccountList />
           </section>
         </div>
       </div>

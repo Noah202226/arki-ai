@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import { Plus, Info } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CreditMonitoring } from "../financials/components/CreditMonitoring";
 
 export default function CreditsPage() {
   return (
@@ -31,11 +30,6 @@ export default function CreditsPage() {
           Your total monthly commitment for all active loans is ₱12,500.00.
         </AlertDescription>
       </Alert>
-
-      {/* MAIN CONTENT - Dito papasok yung component na inayos natin kanina */}
-      <div className="pt-2">
-        <CreditMonitoring />
-      </div>
     </div>
   );
 }
