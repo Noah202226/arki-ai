@@ -7,18 +7,19 @@ import {
   Receipt,
   CreditCard,
   Wallet,
-  Settings,
+  LogOut, // Idagdag ang icon na ito
 } from "lucide-react";
-import { UserButton, useUser } from "@clerk/nextjs";
+import { UserButton, useUser, useClerk } from "@clerk/nextjs"; // Idagdag ang useClerk
 import { cn } from "@/lib/utils";
 
 interface SidebarContentProps {
-  onSelect?: () => void; // Idagdag itong prop
+  onSelect?: () => void;
 }
 
 export function SidebarContent({ onSelect }: SidebarContentProps) {
   const pathname = usePathname();
   const { user } = useUser();
+  const { signOut } = useClerk(); // 1. Kunin ang signOut function mula sa useClerk
 
   const menuItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
@@ -27,9 +28,14 @@ export function SidebarContent({ onSelect }: SidebarContentProps) {
     { icon: Wallet, label: "Accounts", href: "/accounts" },
   ];
 
+  // 2. I-update ang logout handler
+  const handleLogout = async () => {
+    if (onSelect) onSelect(); // Isara ang mobile nav
+    await signOut({ redirectUrl: "/" }); // Tawagin ang Clerk logout
+  };
+
   return (
     <div className="flex flex-col h-full bg-card">
-      {/* BRANDING SECTION */}
       <div className="p-6">
         <div className="flex items-center gap-2 mb-2">
           <div className="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center">
@@ -44,7 +50,6 @@ export function SidebarContent({ onSelect }: SidebarContentProps) {
         </p>
       </div>
 
-      {/* NAVIGATION SECTION */}
       <nav className="flex-1 px-3 space-y-1">
         {menuItems.map((item) => {
           const isActive = pathname === item.href;
@@ -52,7 +57,7 @@ export function SidebarContent({ onSelect }: SidebarContentProps) {
             <Link
               key={item.href}
               href={item.href}
-              onClick={onSelect} // ✅ Dito tatawagin ang close function
+              onClick={onSelect}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 group",
                 isActive
@@ -74,12 +79,20 @@ export function SidebarContent({ onSelect }: SidebarContentProps) {
         })}
       </nav>
 
-      {/* USER PROFILE SECTION (CLERK) */}
-      <div className="p-4 border-t bg-slate-50/50">
+      <div className="p-4 border-t bg-slate-50/50 space-y-2">
+        {/* 3. OPTIONAL: Idagdag itong Logout Button kung gusto mo ng manual button */}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-colors group"
+        >
+          <LogOut className="w-5 h-5 text-red-600" />
+          Logout
+        </button>
+
         <div className="flex items-center justify-between px-2 py-2 rounded-xl bg-white border shadow-sm">
           <div className="flex items-center gap-3 overflow-hidden">
             <UserButton
-              afterSwitchSessionUrl="/"
+              afterSwitchSessionUrl="/" // ✅ Siguraduhin na may redirect pagkatapos mag-logout
               appearance={{
                 elements: {
                   userButtonAvatarBox: "w-9 h-9",
