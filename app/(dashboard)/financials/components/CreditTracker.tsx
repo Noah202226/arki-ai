@@ -69,6 +69,32 @@ export function CreditTracker() {
   const overallProgress =
     totalDebt > 0 ? ((totalDebt - totalRemaining) / totalDebt) * 100 : 0;
 
+  // Get next payment
+  const getNextPaymentDate = (dueDay: number | undefined | null) => {
+    const now = new Date();
+    const day = dueDay ?? 1;
+    const nextPayment = new Date(now.getFullYear(), now.getMonth(), day);
+
+    if (now.getDate() > day) {
+      nextPayment.setMonth(nextPayment.getMonth() + 1);
+    }
+    return nextPayment;
+  };
+
+  // I-sort ang credits array
+  const sortedCredits = [...(credits || [])].sort((a, b) => {
+    // Unahin ang mga HINDI pa fully paid
+    const aPaid = a.remainingBalance <= 0;
+    const bPaid = b.remainingBalance <= 0;
+    if (aPaid !== bPaid) return aPaid ? 1 : -1;
+
+    // Kunin ang next payment date para sa dalawa
+    const dateA = getNextPaymentDate(a.dueDate).getTime();
+    const dateB = getNextPaymentDate(b.dueDate).getTime();
+
+    return dateA - dateB; // Ascending: pinakamalapit ang una
+  });
+
   return (
     <div className="space-y-6 max-w-full overflow-hidden px-1">
       {/* 1. Header */}
@@ -117,6 +143,7 @@ export function CreditTracker() {
                   ₱{totalRemaining.toLocaleString()}
                 </p>
               </div>
+
               <div className="space-y-1">
                 <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">
                   Overall Debt
@@ -148,26 +175,41 @@ export function CreditTracker() {
       </Card>
       {/* 3. Individual Credits */}
       <div className="grid gap-4 sm:grid-cols-2">
-        {credits.map((loan) => {
+        {sortedCredits.map((loan) => {
           const isFullyPaid = loan.remainingBalance <= 0;
-
           const now = new Date();
-          const hasDueDate =
-            loan.dueDate !== undefined && loan.dueDate !== null;
-          const dueDay = hasDueDate ? loan.dueDate : 1;
-          const nextPayment = new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            dueDay,
-          );
 
-          if (now.getDate() > dueDay) {
-            nextPayment.setMonth(nextPayment.getMonth() + 1);
+          // Gagamitin ang helper function na ginawa natin kanina
+          const nextPayment = getNextPaymentDate(loan.dueDate);
+
+          // --- COUNTDOWN LOGIC ---
+          const diffMs = nextPayment.getTime() - now.getTime();
+          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+          let countdownText = "";
+          if (diffMs < 0) {
+            countdownText = "OVERDUE";
+          } else if (diffDays > 0) {
+            countdownText = `${diffDays}d to go`;
+          } else {
+            countdownText = `${diffHours}h left`;
           }
 
+          // CRITICAL: Within 24 hours
+          const isCritical =
+            !isFullyPaid &&
+            nextPayment.getTime() - now.getTime() < 24 * 60 * 60 * 1000 &&
+            nextPayment.getTime() - now.getTime() > 0;
+
+          // URGENT: Within 3 days (ito yung dati mo nang logic)
           const isUrgent =
+            !isFullyPaid &&
             Math.abs(nextPayment.getTime() - now.getTime()) <
-            3 * 24 * 60 * 60 * 1000;
+              3 * 24 * 60 * 60 * 1000;
+
+          const hasDueDate =
+            loan.dueDate !== undefined && loan.dueDate !== null;
           const isValidTime = !isNaN(nextPayment.getTime());
           const progress = (loan.totalPaid / loan.totalAmount) * 100;
 
@@ -175,26 +217,65 @@ export function CreditTracker() {
             <Card
               key={loan._id}
               className={cn(
-                "group border transition-all",
+                "group border transition-all duration-500",
                 isFullyPaid
                   ? "bg-green-50/30 border-green-200"
                   : "hover:border-orange-500/30",
+                isCritical &&
+                  "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.15)] animate-pulse ring-1 ring-red-500/20",
               )}
             >
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
                     <div className="flex gap-2 items-center">
-                      <CardTitle>{loan.creditorName}</CardTitle>
-                      {isFullyPaid && (
-                        <Badge className="bg-green-600 hover:bg-green-700">
+                      <CardTitle className={cn(isCritical && "text-red-600")}>
+                        {loan.creditorName}
+                      </CardTitle>
+
+                      {isFullyPaid ? (
+                        <Badge className="bg-green-600 text-[9px] h-4">
                           FULLY PAID
                         </Badge>
+                      ) : (
+                        hasDueDate && (
+                          <Badge
+                            variant={isCritical ? "destructive" : "outline"}
+                            className={cn(
+                              "text-[9px] px-1.5 h-4 font-bold uppercase",
+                              isCritical && "animate-bounce",
+                              !isCritical &&
+                                isUrgent &&
+                                "border-orange-500 text-orange-600",
+                            )}
+                          >
+                            {countdownText}
+                          </Badge>
+                        )
                       )}
                     </div>
 
+                    {hasDueDate && isValidTime ? (
+                      <p
+                        className={cn(
+                          "text-[10px] font-bold px-2 py-0.5 rounded-full w-fit",
+                          isCritical
+                            ? "bg-red-600 text-white"
+                            : isUrgent
+                              ? "bg-red-100 text-red-600"
+                              : "bg-slate-100 text-slate-500",
+                        )}
+                      >
+                        {isCritical ? "⚠️ PAY BY: " : "NEXT: "}
+                        {format(nextPayment, "MMM dd, yyyy")}
+                      </p>
+                    ) : (
+                      <p className="text-[10px] bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded-full w-fit">
+                        ⚠️ SET DUE DAY
+                      </p>
+                    )}
+
                     <div className="flex items-center gap-2">
-                      <CardTitle>{loan.creditorName}</CardTitle>
                       <Badge
                         variant="outline"
                         className="text-[9px] uppercase py-0 px-1.5 h-4 border-slate-200 text-slate-500"
@@ -202,22 +283,6 @@ export function CreditTracker() {
                         {loan.category || "General"}
                       </Badge>
                     </div>
-                    {hasDueDate && isValidTime ? (
-                      <p
-                        className={cn(
-                          "text-[10px] font-bold px-2 py-0.5 rounded-full w-fit",
-                          isUrgent
-                            ? "bg-red-100 text-red-600 animate-pulse"
-                            : "bg-slate-100 text-slate-500",
-                        )}
-                      >
-                        NEXT: {format(nextPayment, "MMM dd, yyyy")}
-                      </p>
-                    ) : (
-                      <p className="text-[10px] bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded-full w-fit">
-                        ⚠️ SET DUE DAY
-                      </p>
-                    )}
                   </div>
 
                   {/* ACTION MENU */}
@@ -269,21 +334,45 @@ export function CreditTracker() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 py-1">
+                  {/* TOTAL PAID */}
                   <div>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
+                      Paid
+                    </p>
+                    <p className="text-[13px] font-bold text-green-600 font-mono">
+                      ₱{loan.totalPaid.toLocaleString()}
+                    </p>
+                  </div>
+
+                  {/* NEW: MONTHLY INSTALLMENT */}
+                  <div className="border-l pl-2">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
+                      Installment
+                    </p>
+                    <p className="text-[13px] font-bold text-orange-600 font-mono">
+                      ₱{(loan.monthlyInstallment || 0).toLocaleString()}
+                    </p>
+                  </div>
+
+                  {/* REMAINING BALANCE */}
+                  <div className="border-l pl-2">
                     <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
                       Balance
                     </p>
-                    <p className="text-sm font-bold text-red-600 font-mono">
+                    <p className="text-[13px] font-bold text-red-600 font-mono">
                       ₱{loan.remainingBalance.toLocaleString()}
                     </p>
                   </div>
-                  <div className="border-l pl-3">
+
+                  {/* MONTHS LEFT */}
+                  <div className="border-l pl-2">
                     <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
-                      Months Left
+                      Left
                     </p>
-                    <p className="text-sm font-bold text-slate-700 font-mono">
-                      {loan.remainingMonths} Mo.
+                    <p className="text-[13px] font-bold text-slate-700 font-mono">
+                      {loan.remainingMonths}{" "}
+                      <span className="text-[10px]">Mo.</span>
                     </p>
                   </div>
                 </div>
@@ -340,21 +429,48 @@ export function CreditTracker() {
                           </SheetHeader>
 
                           {/* MINI DASHBOARD SA LOOB NG SIDEBAR */}
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-white p-4 rounded-2xl border shadow-sm">
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                                Total Paid
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 py-1">
+                            {/* TOTAL PAID */}
+                            <div>
+                              <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
+                                Paid
                               </p>
-                              <p className="text-lg font-black text-green-600 font-mono">
+                              <p className="text-[13px] font-bold text-green-600 font-mono">
                                 ₱{loan.totalPaid.toLocaleString()}
                               </p>
                             </div>
-                            <div className="bg-white p-4 rounded-2xl border shadow-sm">
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                                Remaining
+
+                            {/* Monthly payment */}
+                            <div className="border-l pl-2">
+                              <p className="text-[9px] font-bold text-orange-600 uppercase mb-0.5">
+                                Monthly
                               </p>
-                              <p className="text-lg font-black text-red-600 font-mono">
+                              <p className="text-[13px] font-bold text-orange-600 font-mono">
+                                ₱
+                                {(
+                                  loan.monthlyInstallment || 0
+                                ).toLocaleString()}
+                              </p>
+                            </div>
+
+                            {/* REMAINING BALANCE */}
+                            <div className="border-l pl-2">
+                              <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
+                                Balance
+                              </p>
+                              <p className="text-[13px] font-bold text-red-600 font-mono">
                                 ₱{loan.remainingBalance.toLocaleString()}
+                              </p>
+                            </div>
+
+                            {/* MONTHS LEFT */}
+                            <div className="border-l pl-2">
+                              <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
+                                Left
+                              </p>
+                              <p className="text-[13px] font-bold text-slate-700 font-mono">
+                                {loan.remainingMonths}{" "}
+                                <span className="text-[10px]">Mo.</span>
                               </p>
                             </div>
                           </div>
