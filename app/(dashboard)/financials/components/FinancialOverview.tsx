@@ -72,31 +72,65 @@ export function FinancialOverview() {
     end: endOfMonth(addMonths(now, 1)),
   };
 
-  const calculateData = (range: { start: Date; end: Date }) => {
-    // Collect breakdown items
-    const breakdown: { name: string; amount: number }[] = [];
+  const calculateData = (
+    range: { start: Date; end: Date },
+    isNextMonthForecast = false,
+  ) => {
+    const breakdown: { name: string; amount: number }[] = []; // 1. Manual pending bills (transactions table)
 
-    // 1. Manual pending bills
     const financialsDueList = transactions.filter(
       (t) =>
         t.status === "pending" && isWithinInterval(new Date(t.dueDate), range),
     );
     financialsDueList.forEach((t) =>
       breakdown.push({ name: t.title, amount: t.amount }),
-    );
+    ); // 2. Credits (Patrick, Gloan, Maya, etc.)
 
-    // 2. Credits
-    const creditsDueList = credits
-      .filter((c) => c.remainingBalance > 0)
-      .filter((c) => isDueInRange(c.dueDate, range.start, range.end));
+    credits.forEach((c) => {
+      if (c.remainingBalance <= 0) return; // Check kung may due date sa loob ng range
 
-    creditsDueList.forEach((c) => {
-      const installment = c.monthlyInstallment || c.remainingBalance;
-      const toPay = Math.min(installment, c.remainingBalance);
-      breakdown.push({ name: c.creditorName, amount: toPay });
+      if (isDueInRange(c.dueDate, range.start, range.end)) {
+        const installment = c.monthlyInstallment || c.remainingBalance;
+        const currentDue = Math.min(installment, c.remainingBalance);
+
+        if (isNextMonthForecast) {
+          // LOGIC PARA SA NEXT MONTH:
+          // I-assume natin na mababayaran ang "This Month" portion.
+          // Kung ang matitirang balance matapos ang buwang ito ay <= 0, huwag na isama sa Next Month.
+          const projectedBalanceAfterThisMonth =
+            c.remainingBalance - currentDue;
+          if (projectedBalanceAfterThisMonth > 0) {
+            const nextMonthDue = Math.min(
+              installment,
+              projectedBalanceAfterThisMonth,
+            );
+            breakdown.push({ name: c.creditorName, amount: nextMonthDue });
+          }
+        } else {
+          // LOGIC PARA SA CURRENT WEEK/MONTH:
+          // Ibawas natin ang mga payments na nagawa na para sa specific creditor na ito sa loob ng range.
+          const alreadyPaidForThisInThisRange = transactions
+            .filter(
+              (t) =>
+                (t.status === "completed" || t.status === "paid") &&
+                t.title.toLowerCase().includes(c.creditorName.toLowerCase()) &&
+                isWithinInterval(new Date(t.dueDate), range),
+            )
+            .reduce((sum, t) => sum + t.amount, 0);
+
+          const remainingToPay = Math.max(
+            0,
+            currentDue - alreadyPaidForThisInThisRange,
+          );
+
+          if (remainingToPay > 0) {
+            breakdown.push({ name: c.creditorName, amount: remainingToPay });
+          }
+        }
+      }
     });
 
-    const totalDue = breakdown.reduce((sum, item) => sum + item.amount, 0);
+    const totalDue = breakdown.reduce((sum, item) => sum + item.amount, 0); // Para sa 'Paid' row display (ito ay record ng lahat ng pumasok na payment sa range)
 
     const financialsPaid = transactions
       .filter(
@@ -109,13 +143,13 @@ export function FinancialOverview() {
     return {
       due: totalDue,
       paid: financialsPaid,
-      breakdown: breakdown.sort((a, b) => b.amount - a.amount), // Sort by highest amount
+      breakdown: breakdown.sort((a, b) => b.amount - a.amount),
     };
   };
 
   const week = calculateData(rangeWeek);
   const month = calculateData(rangeMonth);
-  const nextMonth = calculateData(rangeNextMonth);
+  const nextMonth = calculateData(rangeNextMonth, true);
 
   const formatPHP = (amount: number) =>
     new Intl.NumberFormat("en-PH", {
