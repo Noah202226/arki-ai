@@ -20,6 +20,8 @@ export default defineSchema({
     status: v.string(), // "completed", "pending", "paid"
     frequency: v.string(),
     dueDate: v.number(),
+    isDeleted: v.optional(v.boolean()), // Para sa soft delete
+    deletedAt: v.optional(v.number()),
   })
     .index("by_userId_and_date", ["userId", "dueDate"])
     .index("by_account", ["accountId"]),

@@ -82,6 +82,8 @@ export const addFunds = mutation({
       status: "completed",
       frequency: "one-time",
       dueDate: Date.now(),
+      isDeleted: false, // Default value para sa soft delete
+      deletedAt: undefined, // Default value para sa soft delete
     });
 
     // 3. Insert into 'income' table (para sa Income Monitoring specifically)

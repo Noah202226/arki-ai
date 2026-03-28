@@ -341,7 +341,7 @@ export function CreditTracker() {
                       Paid
                     </p>
                     <p className="text-[13px] font-bold text-green-600 font-mono">
-                      ₱{loan.totalPaid.toLocaleString()}
+                      ₱{loan.totalPaid}
                     </p>
                   </div>
 
@@ -377,141 +377,140 @@ export function CreditTracker() {
                   </div>
                 </div>
 
-                {isFullyPaid ? (
-                  <Button
-                    onClick={() => archive({ id: loan._id })}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold gap-2 shadow-lg shadow-green-100"
-                  >
-                    <TrendingDown className="w-4 h-4 rotate-180" />
-                    Archive Completed Loan
-                  </Button>
-                ) : (
-                  <div className="pt-2 flex items-center gap-2">
+                <div className="pt-2 flex items-center gap-2">
+                  {isFullyPaid ? (
+                    <div className="pt-2 flex items-center gap-2">
+                      <Button
+                        onClick={() => archive({ id: loan._id })}
+                        className=" bg-green-600 hover:bg-green-700 text-white font-bold gap-2 shadow-lg shadow-green-100"
+                      >
+                        <TrendingDown className="w-4 h-4 rotate-180" />
+                        Archive Completed Loan
+                      </Button>
+                    </div>
+                  ) : (
                     <AddTransactionDialog
                       initialCategory="expense"
                       initialTitle={`Payment for ${loan.creditorName}`}
                       creditId={loan._id}
                     />
+                  )}
 
-                    <div className="flex-1" />
+                  <div className="flex-1" />
 
-                    <Sheet>
-                      <SheetTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-[10px] font-bold uppercase gap-1.5 text-slate-400 hover:text-orange-600"
-                        >
-                          <History className="w-3 h-3" />
-                          History
-                        </Button>
-                      </SheetTrigger>
-                      <SheetContent className="w-full sm:max-w-md border-l shadow-2xl flex flex-col p-0">
-                        {/* 1. STICKY HEADER WITH SUMMARY */}
-                        <div className="p-6 border-b bg-slate-50/50">
-                          <SheetHeader className="text-left mb-6">
-                            <div className="flex items-center gap-3">
-                              <div className="bg-orange-600 p-2 rounded-xl text-white shadow-lg shadow-orange-200">
-                                <History className="w-5 h-5" />
-                              </div>
-                              <div>
-                                <SheetTitle className="text-xl font-bold">
-                                  Repayment History
-                                </SheetTitle>
-                                <SheetDescription className="text-xs font-medium text-slate-500">
-                                  Tracking payments for{" "}
-                                  <span className="text-orange-600 font-bold">
-                                    {loan.creditorName}
-                                  </span>
-                                </SheetDescription>
-                              </div>
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-[10px] font-bold uppercase gap-1.5 text-slate-400 hover:text-orange-600"
+                      >
+                        <History className="w-3 h-3" />
+                        History
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent className="w-full sm:max-w-md border-l shadow-2xl flex flex-col p-0">
+                      {/* 1. STICKY HEADER WITH SUMMARY */}
+                      <div className="p-6 border-b bg-slate-50/50">
+                        <SheetHeader className="text-left mb-6">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-orange-600 p-2 rounded-xl text-white shadow-lg shadow-orange-200">
+                              <History className="w-5 h-5" />
                             </div>
-                          </SheetHeader>
-
-                          {/* MINI DASHBOARD SA LOOB NG SIDEBAR */}
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 py-1">
-                            {/* TOTAL PAID */}
                             <div>
-                              <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
-                                Paid
-                              </p>
-                              <p className="text-[13px] font-bold text-green-600 font-mono">
-                                ₱{loan.totalPaid.toLocaleString()}
-                              </p>
-                            </div>
-
-                            {/* Monthly payment */}
-                            <div className="border-l pl-2">
-                              <p className="text-[9px] font-bold text-orange-600 uppercase mb-0.5">
-                                Monthly
-                              </p>
-                              <p className="text-[13px] font-bold text-orange-600 font-mono">
-                                ₱
-                                {(
-                                  loan.monthlyInstallment || 0
-                                ).toLocaleString()}
-                              </p>
-                            </div>
-
-                            {/* REMAINING BALANCE */}
-                            <div className="border-l pl-2">
-                              <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
-                                Balance
-                              </p>
-                              <p className="text-[13px] font-bold text-red-600 font-mono">
-                                ₱{loan.remainingBalance.toLocaleString()}
-                              </p>
-                            </div>
-
-                            {/* MONTHS LEFT */}
-                            <div className="border-l pl-2">
-                              <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
-                                Left
-                              </p>
-                              <p className="text-[13px] font-bold text-slate-700 font-mono">
-                                {loan.remainingMonths}{" "}
-                                <span className="text-[10px]">Mo.</span>
-                              </p>
+                              <SheetTitle className="text-xl font-bold">
+                                Repayment History
+                              </SheetTitle>
+                              <SheetDescription className="text-xs font-medium text-slate-500">
+                                Tracking payments for{" "}
+                                <span className="text-orange-600 font-bold">
+                                  {loan.creditorName}
+                                </span>
+                              </SheetDescription>
                             </div>
                           </div>
-                        </div>
+                        </SheetHeader>
 
-                        {/* 2. SCROLLABLE TRANSACTION LIST */}
-                        <div className="flex-1 overflow-y-auto p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">
-                              Transaction Logs
-                            </h4>
-                            <Badge
-                              variant="outline"
-                              className="text-[9px] font-bold bg-slate-100 border-none"
-                            >
-                              {loan.remainingMonths} Months Left
-                            </Badge>
+                        {/* MINI DASHBOARD SA LOOB NG SIDEBAR */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 py-1">
+                          {/* TOTAL PAID */}
+                          <div>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
+                              Paid
+                            </p>
+                            <p className="text-[13px] font-bold text-green-600 font-mono">
+                              ₱{loan.totalPaid.toLocaleString()}
+                            </p>
                           </div>
 
-                          <CreditTransactionFlow
-                            creditorName={loan.creditorName}
-                            creditId={loan._id}
-                          />
-                        </div>
+                          {/* Monthly payment */}
+                          <div className="border-l pl-2">
+                            <p className="text-[9px] font-bold text-orange-600 uppercase mb-0.5">
+                              Monthly
+                            </p>
+                            <p className="text-[13px] font-bold text-orange-600 font-mono">
+                              ₱{(loan.monthlyInstallment || 0).toLocaleString()}
+                            </p>
+                          </div>
 
-                        {/* 3. FOOTER ACTION */}
-                        <div className="p-6 border-t bg-slate-50/50">
-                          <Button
+                          {/* REMAINING BALANCE */}
+                          <div className="border-l pl-2">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
+                              Balance
+                            </p>
+                            <p className="text-[13px] font-bold text-red-600 font-mono">
+                              ₱{loan.remainingBalance.toLocaleString()}
+                            </p>
+                          </div>
+
+                          {/* MONTHS LEFT */}
+                          <div className="border-l pl-2">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
+                              Left
+                            </p>
+                            <p className="text-[13px] font-bold text-slate-700 font-mono">
+                              {loan.remainingMonths}{" "}
+                              <span className="text-[10px]">Mo.</span>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 2. SCROLLABLE TRANSACTION LIST */}
+                      <div className="flex-1 overflow-y-auto p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">
+                            Transaction Logs
+                          </h4>
+                          <Badge
                             variant="outline"
-                            className="w-full border-dashed border-slate-300 text-slate-500 hover:text-orange-600 hover:border-orange-200 transition-all"
-                            onClick={() => {
-                              /* Pwede mo itrigger dito ang export to PDF sa future */
-                            }}
+                            className="text-[9px] font-bold bg-slate-100 border-none"
                           >
-                            Generate Payment Report
-                          </Button>
+                            {loan.remainingMonths} Months Left
+                          </Badge>
                         </div>
-                      </SheetContent>
-                    </Sheet>
-                  </div>
-                )}
+
+                        <CreditTransactionFlow
+                          creditorName={loan.creditorName}
+                          creditId={loan._id}
+                        />
+                      </div>
+
+                      {/* 3. FOOTER ACTION */}
+                      <div className="p-6 border-t bg-slate-50/50">
+                        <Button
+                          variant="outline"
+                          className="w-full border-dashed border-slate-300 text-slate-500 hover:text-orange-600 hover:border-orange-200 transition-all"
+                          onClick={() => {
+                            /* Pwede mo itrigger dito ang export to PDF sa future */
+                          }}
+                        >
+                          Generate Payment Report
+                        </Button>
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                </div>
               </CardContent>
             </Card>
           );
@@ -535,7 +534,7 @@ function CreditTransactionFlow({
   creditorName: string;
   creditId: string;
 }) {
-  const allTransactions = useQuery(api.financials.getTransactions);
+  const allTransactions = useQuery(api.financials.getAllTransactions);
 
   if (!allTransactions)
     return <div className="py-2 animate-pulse h-4 bg-slate-50 rounded" />;
@@ -554,19 +553,47 @@ function CreditTransactionFlow({
 
   return (
     <div className="space-y-1 max-h-40 overflow-y-auto pr-2">
-      {payments.map((p) => (
-        <div
-          key={p._id}
-          className="flex justify-between items-center text-xs py-1.5 border-b border-slate-50 last:border-0"
-        >
-          <span className="text-slate-600 text-[10px] font-medium">
-            {p.dueDate ? format(new Date(p.dueDate), "MMM dd, yyyy") : "---"}
-          </span>
-          <span className="font-black text-red-500 font-mono">
-            ₱{p.amount.toLocaleString()}
-          </span>
-        </div>
-      ))}
+      {payments.map((p) => {
+        const isReversal = p.type === "reversal";
+        const isVoided = p.isDeleted;
+
+        return (
+          <div
+            key={p._id}
+            className={cn(
+              "flex justify-between items-center text-xs py-1.5 border-b border-slate-50 last:border-0",
+              isVoided && "opacity-40 grayscale", // Make the "wrong" one look inactive
+              isReversal && "bg-blue-50/50 rounded px-1", // Highlight the correction
+            )}
+          >
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-700">
+                {isReversal ? "REFUND/ADJUSTMENT" : p.title}
+              </span>
+              <span className="text-slate-400 text-[9px]">
+                {format(new Date(p.dueDate), "MMM dd, yyyy")}
+              </span>
+            </div>
+
+            <div className="text-right">
+              {isReversal || (isVoided && p.type === "expense") ? (
+                <span className="font-black text-green-500 font-mono">
+                  + ₱{p.amount.toLocaleString()}
+                </span>
+              ) : (
+                <span className="font-black text-red-500 font-mono">
+                  - ₱{p.amount.toLocaleString()}
+                </span>
+              )}
+              {isVoided && (
+                <div className="text-[8px] font-bold text-slate-400 uppercase">
+                  Voided
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

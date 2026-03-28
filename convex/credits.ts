@@ -47,6 +47,7 @@ export const getCreditSummary = query({
     const allPayments = await ctx.db
       .query("financials")
       .withIndex("by_userId_and_date", (q) => q.eq("userId", identity.subject))
+      .filter((q) => q.eq(q.field("isDeleted"), false))
       .collect();
 
     // 3. I-map ang payments sa kaukulang credit base sa title

@@ -75,17 +75,23 @@ export function AddTransactionDialog({
 
     setIsSubmitting(true);
     try {
+      // Kung may creditId, force natin na "Debt Payment" ang category
+      // at "expense" ang type (kasi outflow ng pera ito).
+      const finalCategory = creditId ? "Debt Payment" : category;
+      const finalType = creditId ? "expense" : type;
+
       await addTransaction({
         title,
         amount: Number(amount),
-        type,
-        category,
+        type: finalType,
+        category: finalCategory,
         accountId: accountId as any,
         creditId: creditId as any,
         date: date.getTime(),
       });
+
       setOpen(false);
-      // Reset Form
+      setAmount(""); // Reset amount after success
     } catch (error) {
       console.error("Failed to add transaction:", error);
     } finally {
@@ -107,22 +113,37 @@ export function AddTransactionDialog({
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           {/* Income vs Expense Toggle */}
-          <Tabs value={type} onValueChange={setType} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger
-                value="expense"
-                className="data-[state=active]:bg-red-500 data-[state=active]:text-white"
-              >
-                Expense
-              </TabsTrigger>
-              <TabsTrigger
-                value="income"
-                className="data-[state=active]:bg-green-500 data-[state=active]:text-white"
-              >
-                Income
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+
+          {!creditId && (
+            <Tabs value={type} onValueChange={setType} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger
+                  value="expense"
+                  className="data-[state=active]:bg-red-500 data-[state=active]:text-white"
+                >
+                  Expense
+                </TabsTrigger>
+                <TabsTrigger
+                  value="income"
+                  className="data-[state=active]:bg-green-500 data-[state=active]:text-white"
+                >
+                  Income
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
+
+          {creditId && (
+            <div className="bg-orange-50 border border-orange-100 p-3 rounded-lg mb-4">
+              <p className="text-[11px] font-bold text-orange-800 uppercase tracking-tight">
+                Repayment Mode
+              </p>
+              <p className="text-[10px] text-orange-600">
+                This transaction will be recorded as a debt payment and will
+                reduce your remaining balance.
+              </p>
+            </div>
+          )}
 
           {/* DATE PICKER FIELD */}
           <div className="space-y-2 flex flex-col">

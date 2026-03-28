@@ -80,6 +80,8 @@ export const addTransaction = mutation({
       status: "completed",
       frequency: "one-time",
       dueDate: transactionDate, // Ginamit natin yung date mula sa form
+      isDeleted: false, // Default value para sa soft delete
+      deletedAt: undefined, // Default value para sa soft delete
     });
 
     // 2. Update Account Balance
@@ -99,6 +101,20 @@ export const addTransaction = mutation({
 
 // --- READ: Get All Transactions (History) ---
 export const getTransactions = query({
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    return await ctx.db
+      .query("financials")
+      .withIndex("by_userId_and_date", (q) => q.eq("userId", identity.subject))
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .order("desc")
+      .collect();
+  },
+});
+
+export const getAllTransactions = query({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
@@ -135,6 +151,55 @@ export const remove = mutation({
   args: { id: v.id("financials") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id);
+  },
+});
+
+export const softDeleteTransaction = mutation({
+  args: { id: v.id("financials") },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new Error("Transaction not found");
+
+    // 1. Revert the Account Balance (Cash/Savings)
+    if (existing.accountId) {
+      const account = await ctx.db.get(existing.accountId);
+      if (account) {
+        const revertedBalance =
+          existing.type === "income"
+            ? account.balance - existing.amount
+            : account.balance + existing.amount;
+
+        await ctx.db.patch(existing.accountId, { balance: revertedBalance });
+      }
+    }
+
+    // 🔥 TINANGGAL: Ang pag-patch sa `credit.totalPaid` at `totalAmount`
+    // Hindi na ito kailangan dahil ang getCreditSummary ay nagco-compute
+    // dynamically base sa mga non-deleted na transactions!
+
+    // 2. Mark the original transaction as deleted and VOID it
+    await ctx.db.patch(args.id, {
+      isDeleted: true,
+      deletedAt: Date.now(),
+      status: "voided",
+    });
+
+    // 3. (Optional) Create a reversal log for history purposes
+    // Dahil "reversal" ang type nito at hindi "expense", hindi ito
+    // isasama ng getCreditSummary sa totalPaid computation. Perfect!
+    await ctx.db.insert("financials", {
+      userId: existing.userId,
+      accountId: existing.accountId,
+      creditId: existing.creditId,
+      amount: existing.amount,
+      title: `Correction: ${existing.title}`,
+      type: "reversal",
+      category: "Adjustment",
+      status: "completed",
+      dueDate: Date.now(),
+      frequency: "once",
+      isDeleted: false, // Kailangan itong i-set para sumunod sa schema mo
+    });
   },
 });
 
