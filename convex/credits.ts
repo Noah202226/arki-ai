@@ -50,11 +50,38 @@ export const getCreditSummary = query({
       .filter((q) => q.eq(q.field("isDeleted"), false))
       .collect();
 
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const startOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1,
+    ).getTime();
+
     // 3. I-map ang payments sa kaukulang credit base sa title
     return credits.map((credit) => {
+      // 🔥 Check kung may payment na ginawa ngayong buwan
+
       const payments = allPayments.filter(
         (tx) => tx.creditId === credit._id && tx.type === "expense",
       );
+
+      const isPaidThisMonth = payments.some(
+        (p) => p._creationTime >= startOfMonth,
+      );
+
+      let dayOfMonth = credit.dueDate;
+      if (dayOfMonth > 31) {
+        dayOfMonth = new Date(dayOfMonth).getDate();
+      }
+
+      // 2. Kalkulahin ang Next Due Date
+      let nextDueDate = new Date(currentYear, currentMonth, credit.dueDate);
+
+      if (isPaidThisMonth || now > nextDueDate) {
+        nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+      }
 
       const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
       const remainingBalance = credit.totalAmount - totalPaid;
@@ -71,6 +98,8 @@ export const getCreditSummary = query({
         remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
         remainingMonths: remainingMonths > 0 ? remainingMonths : 0,
         progress: (totalPaid / credit.totalAmount) * 100,
+        isPaidThisMonth,
+        nextPaymentDate: nextDueDate.getTime(),
       };
     });
   },

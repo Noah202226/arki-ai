@@ -51,6 +51,7 @@ export function TransactionHistory() {
               <td className="p-3 uppercase text-[10px] font-bold tracking-tighter opacity-60">
                 {tx.type} - {tx.title}
               </td>
+
               <td
                 className={`p-3 text-right font-mono font-bold ${
                   tx.type === "reversal"
@@ -67,6 +68,7 @@ export function TransactionHistory() {
                     : "-"}{" "}
                 ₱{tx.amount.toLocaleString()}
               </td>
+
               <td className="p-3 text-center">
                 <Button
                   variant="ghost"

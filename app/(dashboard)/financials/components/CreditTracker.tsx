@@ -179,8 +179,14 @@ export function CreditTracker() {
           const isFullyPaid = loan.remainingBalance <= 0;
           const now = new Date();
 
-          // Gagamitin ang helper function na ginawa natin kanina
-          const nextPayment = getNextPaymentDate(loan.dueDate);
+          // 1. DYNAMIC NEXT PAYMENT CALCULATION
+          // Gagamitin natin ang 'nextPaymentDate' na galing sa backend (na dapat ay timestamp)
+          const rawDate = loan.nextPaymentDate || loan.dueDate;
+          const nextPayment = new Date(rawDate);
+          const isPaidThisMonth = loan.isPaidThisMonth;
+
+          // Ang Overdue ay true lang kung: Lumipas na ang date AND hindi pa bayad ngayong buwan
+          const isOverdue = now > nextPayment && !isPaidThisMonth;
 
           // --- COUNTDOWN LOGIC ---
           const diffMs = nextPayment.getTime() - now.getTime();
@@ -188,7 +194,9 @@ export function CreditTracker() {
           const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
 
           let countdownText = "";
-          if (diffMs < 0) {
+          if (isPaidThisMonth) {
+            countdownText = "SETTLED";
+          } else if (diffMs < 0) {
             countdownText = "OVERDUE";
           } else if (diffDays > 0) {
             countdownText = `${diffDays}d to go`;
@@ -196,22 +204,27 @@ export function CreditTracker() {
             countdownText = `${diffHours}h left`;
           }
 
-          // CRITICAL: Within 24 hours
+          // CRITICAL: Within 24 hours at hindi pa bayad
           const isCritical =
             !isFullyPaid &&
-            nextPayment.getTime() - now.getTime() < 24 * 60 * 60 * 1000 &&
-            nextPayment.getTime() - now.getTime() > 0;
+            !isPaidThisMonth &&
+            diffMs < 24 * 60 * 60 * 1000 &&
+            diffMs > 0;
 
-          // URGENT: Within 3 days (ito yung dati mo nang logic)
+          // URGENT: Within 3 days at hindi pa bayad
           const isUrgent =
             !isFullyPaid &&
-            Math.abs(nextPayment.getTime() - now.getTime()) <
-              3 * 24 * 60 * 60 * 1000;
+            !isPaidThisMonth &&
+            Math.abs(diffMs) < 3 * 24 * 60 * 60 * 1000;
 
           const hasDueDate =
             loan.dueDate !== undefined && loan.dueDate !== null;
           const isValidTime = !isNaN(nextPayment.getTime());
           const progress = (loan.totalPaid / loan.totalAmount) * 100;
+
+          // Status flags para sa UI
+          const showWarning = (isCritical || isOverdue) && !isPaidThisMonth;
+          const showUrgent = isUrgent && !isPaidThisMonth;
 
           return (
             <Card
@@ -221,7 +234,7 @@ export function CreditTracker() {
                 isFullyPaid
                   ? "bg-green-50/30 border-green-200"
                   : "hover:border-orange-500/30",
-                isCritical &&
+                showWarning &&
                   "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.15)] animate-pulse ring-1 ring-red-500/20",
               )}
             >
@@ -229,7 +242,7 @@ export function CreditTracker() {
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
                     <div className="flex gap-2 items-center">
-                      <CardTitle className={cn(isCritical && "text-red-600")}>
+                      <CardTitle className={cn(showWarning && "text-red-600")}>
                         {loan.creditorName}
                       </CardTitle>
 
@@ -237,15 +250,19 @@ export function CreditTracker() {
                         <Badge className="bg-green-600 text-[9px] h-4">
                           FULLY PAID
                         </Badge>
+                      ) : isPaidThisMonth ? (
+                        <Badge className="bg-blue-500 text-[9px] h-4 uppercase font-bold">
+                          Paid this month ✨
+                        </Badge>
                       ) : (
                         hasDueDate && (
                           <Badge
-                            variant={isCritical ? "destructive" : "outline"}
+                            variant={showWarning ? "destructive" : "outline"}
                             className={cn(
                               "text-[9px] px-1.5 h-4 font-bold uppercase",
-                              isCritical && "animate-bounce",
-                              !isCritical &&
-                                isUrgent &&
+                              showWarning && "animate-bounce",
+                              !showWarning &&
+                                showUrgent &&
                                 "border-orange-500 text-orange-600",
                             )}
                           >
@@ -259,14 +276,20 @@ export function CreditTracker() {
                       <p
                         className={cn(
                           "text-[10px] font-bold px-2 py-0.5 rounded-full w-fit",
-                          isCritical
-                            ? "bg-red-600 text-white"
-                            : isUrgent
-                              ? "bg-red-100 text-red-600"
-                              : "bg-slate-100 text-slate-500",
+                          isPaidThisMonth
+                            ? "bg-green-100 text-green-700"
+                            : showWarning
+                              ? "bg-red-600 text-white"
+                              : showUrgent
+                                ? "bg-red-100 text-red-600"
+                                : "bg-slate-100 text-slate-500",
                         )}
                       >
-                        {isCritical ? "⚠️ PAY BY: " : "NEXT: "}
+                        {isPaidThisMonth
+                          ? "SETTLED FOR THIS MONTH"
+                          : showWarning
+                            ? "⚠️ PAY BY: "
+                            : "NEXT: "}
                         {format(nextPayment, "MMM dd, yyyy")}
                       </p>
                     ) : (
@@ -285,7 +308,6 @@ export function CreditTracker() {
                     </div>
                   </div>
 
-                  {/* ACTION MENU */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -335,17 +357,15 @@ export function CreditTracker() {
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 py-1">
-                  {/* TOTAL PAID */}
                   <div>
                     <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
                       Paid
                     </p>
                     <p className="text-[13px] font-bold text-green-600 font-mono">
-                      ₱{loan.totalPaid}
+                      ₱{loan.totalPaid.toLocaleString()}
                     </p>
                   </div>
 
-                  {/* NEW: MONTHLY INSTALLMENT */}
                   <div className="border-l pl-2">
                     <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
                       Installment
@@ -355,7 +375,6 @@ export function CreditTracker() {
                     </p>
                   </div>
 
-                  {/* REMAINING BALANCE */}
                   <div className="border-l pl-2">
                     <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
                       Balance
@@ -365,7 +384,6 @@ export function CreditTracker() {
                     </p>
                   </div>
 
-                  {/* MONTHS LEFT */}
                   <div className="border-l pl-2">
                     <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
                       Left
@@ -379,15 +397,13 @@ export function CreditTracker() {
 
                 <div className="pt-2 flex items-center gap-2">
                   {isFullyPaid ? (
-                    <div className="pt-2 flex items-center gap-2">
-                      <Button
-                        onClick={() => archive({ id: loan._id })}
-                        className=" bg-green-600 hover:bg-green-700 text-white font-bold gap-2 shadow-lg shadow-green-100"
-                      >
-                        <TrendingDown className="w-4 h-4 rotate-180" />
-                        Archive Completed Loan
-                      </Button>
-                    </div>
+                    <Button
+                      onClick={() => archive({ id: loan._id })}
+                      className=" bg-green-600 hover:bg-green-700 text-white font-bold gap-2 shadow-lg shadow-green-100"
+                    >
+                      <TrendingDown className="w-4 h-4 rotate-180" />
+                      Archive Completed Loan
+                    </Button>
                   ) : (
                     <AddTransactionDialog
                       initialCategory="expense"
@@ -410,7 +426,6 @@ export function CreditTracker() {
                       </Button>
                     </SheetTrigger>
                     <SheetContent className="w-full sm:max-w-md border-l shadow-2xl flex flex-col p-0">
-                      {/* 1. STICKY HEADER WITH SUMMARY */}
                       <div className="p-6 border-b bg-slate-50/50">
                         <SheetHeader className="text-left mb-6">
                           <div className="flex items-center gap-3">
@@ -431,9 +446,7 @@ export function CreditTracker() {
                           </div>
                         </SheetHeader>
 
-                        {/* MINI DASHBOARD SA LOOB NG SIDEBAR */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 py-1">
-                          {/* TOTAL PAID */}
                           <div>
                             <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
                               Paid
@@ -442,8 +455,6 @@ export function CreditTracker() {
                               ₱{loan.totalPaid.toLocaleString()}
                             </p>
                           </div>
-
-                          {/* Monthly payment */}
                           <div className="border-l pl-2">
                             <p className="text-[9px] font-bold text-orange-600 uppercase mb-0.5">
                               Monthly
@@ -452,8 +463,6 @@ export function CreditTracker() {
                               ₱{(loan.monthlyInstallment || 0).toLocaleString()}
                             </p>
                           </div>
-
-                          {/* REMAINING BALANCE */}
                           <div className="border-l pl-2">
                             <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
                               Balance
@@ -462,8 +471,6 @@ export function CreditTracker() {
                               ₱{loan.remainingBalance.toLocaleString()}
                             </p>
                           </div>
-
-                          {/* MONTHS LEFT */}
                           <div className="border-l pl-2">
                             <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
                               Left
@@ -476,7 +483,6 @@ export function CreditTracker() {
                         </div>
                       </div>
 
-                      {/* 2. SCROLLABLE TRANSACTION LIST */}
                       <div className="flex-1 overflow-y-auto p-6">
                         <div className="flex items-center justify-between mb-4">
                           <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">
@@ -489,21 +495,16 @@ export function CreditTracker() {
                             {loan.remainingMonths} Months Left
                           </Badge>
                         </div>
-
                         <CreditTransactionFlow
                           creditorName={loan.creditorName}
                           creditId={loan._id}
                         />
                       </div>
 
-                      {/* 3. FOOTER ACTION */}
                       <div className="p-6 border-t bg-slate-50/50">
                         <Button
                           variant="outline"
                           className="w-full border-dashed border-slate-300 text-slate-500 hover:text-orange-600 hover:border-orange-200 transition-all"
-                          onClick={() => {
-                            /* Pwede mo itrigger dito ang export to PDF sa future */
-                          }}
                         >
                           Generate Payment Report
                         </Button>
