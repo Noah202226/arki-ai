@@ -58,6 +58,11 @@ export const getCreditSummary = query({
       now.getMonth(),
       1,
     ).getTime();
+    const todayAtMidnight = new Date(
+      currentYear,
+      currentMonth,
+      now.getDate(),
+    ).getTime();
 
     // 3. I-map ang payments sa kaukulang credit base sa title
     return credits.map((credit) => {
@@ -67,20 +72,38 @@ export const getCreditSummary = query({
         (tx) => tx.creditId === credit._id && tx.type === "expense",
       );
 
-      const isPaidThisMonth = payments.some(
-        (p) => p._creationTime >= startOfMonth,
-      );
+      const isPaidThisMonth = payments.some((p) => p.dueDate >= startOfMonth);
 
       let dayOfMonth = credit.dueDate;
       if (dayOfMonth > 31) {
         dayOfMonth = new Date(dayOfMonth).getDate();
       }
 
-      // 2. Kalkulahin ang Next Due Date
-      let nextDueDate = new Date(currentYear, currentMonth, credit.dueDate);
+      // 2. Kunin kung ano ang HULING araw ng kasalukuyang buwan (e.g., Feb = 28, April = 30)
+      // Tip: Ang paggamit ng '0' bilang araw sa susunod na buwan ay magbibigay ng huling araw ng kasalukuyang buwan.
+      const lastDayOfCurrentMonth = new Date(
+        currentYear,
+        currentMonth + 1,
+        0,
+      ).getDate();
 
-      if (isPaidThisMonth || now > nextDueDate) {
+      // Siguraduhing hindi lalagpas ang due date sa huling araw ng buwan
+      // Kung ang dayOfMonth ay 31, at April ngayon (30 days), ang actualDueDay ay magiging 30.
+      const actualDueDay = Math.min(dayOfMonth, lastDayOfCurrentMonth);
+
+      // 2. Kalkulahin ang Next Due Date
+      let nextDueDate = new Date(currentYear, currentMonth, actualDueDay);
+      let isOverdue = false;
+
+      if (isPaidThisMonth) {
+        // Kung bayad na ngayong buwan, ang next due date ay sa susunod na buwan na.
         nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+      } else {
+        // Kung HINDI pa bayad, i-check natin kung lumipas na ang deadline
+        if (todayAtMidnight > nextDueDate.getTime()) {
+          isOverdue = true;
+          // WAG i-move ang nextDueDate para manatili itong overdue sa kasalukuyang buwan
+        }
       }
 
       const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
@@ -99,6 +122,7 @@ export const getCreditSummary = query({
         remainingMonths: remainingMonths > 0 ? remainingMonths : 0,
         progress: (totalPaid / credit.totalAmount) * 100,
         isPaidThisMonth,
+        isOverdue,
         nextPaymentDate: nextDueDate.getTime(),
       };
     });

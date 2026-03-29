@@ -69,30 +69,47 @@ export function CreditTracker() {
   const overallProgress =
     totalDebt > 0 ? ((totalDebt - totalRemaining) / totalDebt) * 100 : 0;
 
-  // Get next payment
+  // --- BAGONG UPDATE SA DATE LOGIC ---
   const getNextPaymentDate = (dueDay: number | undefined | null) => {
     const now = new Date();
-    const day = dueDay ?? 1;
-    const nextPayment = new Date(now.getFullYear(), now.getMonth(), day);
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
 
-    if (now.getDate() > day) {
-      nextPayment.setMonth(nextPayment.getMonth() + 1);
+    // 1. Alamin kung Timestamp o Day Number ang gamit (Security Check)
+    let day = dueDay ?? 1;
+    if (day > 31) {
+      day = new Date(day).getDate();
     }
-    return nextPayment;
+
+    // 2. Determine if we are looking at this month or next month
+    let targetMonth = currentMonth;
+    if (now.getDate() > day) {
+      targetMonth = currentMonth + 1;
+    }
+
+    // 3. EOM CLAMPING: Kunin ang huling araw ng target month
+    // Halimbawa: Kung day=31 pero targetMonth=February, magiging 28.
+    const lastDayOfTargetMonth = new Date(
+      currentYear,
+      targetMonth + 1,
+      0,
+    ).getDate();
+    const actualSafeDay = Math.min(day, lastDayOfTargetMonth);
+
+    return new Date(currentYear, targetMonth, actualSafeDay);
   };
+  // --- END NG UPDATE ---
 
   // I-sort ang credits array
   const sortedCredits = [...(credits || [])].sort((a, b) => {
-    // Unahin ang mga HINDI pa fully paid
     const aPaid = a.remainingBalance <= 0;
     const bPaid = b.remainingBalance <= 0;
     if (aPaid !== bPaid) return aPaid ? 1 : -1;
 
-    // Kunin ang next payment date para sa dalawa
     const dateA = getNextPaymentDate(a.dueDate).getTime();
     const dateB = getNextPaymentDate(b.dueDate).getTime();
 
-    return dateA - dateB; // Ascending: pinakamalapit ang una
+    return dateA - dateB;
   });
 
   return (
@@ -179,13 +196,10 @@ export function CreditTracker() {
           const isFullyPaid = loan.remainingBalance <= 0;
           const now = new Date();
 
-          // 1. DYNAMIC NEXT PAYMENT CALCULATION
-          // Gagamitin natin ang 'nextPaymentDate' na galing sa backend (na dapat ay timestamp)
-          const rawDate = loan.nextPaymentDate || loan.dueDate;
-          const nextPayment = new Date(rawDate);
+          // --- UPDATE DITO: Paggamit ng pinagandang getNextPaymentDate ---
+          const nextPayment = getNextPaymentDate(loan.dueDate);
           const isPaidThisMonth = loan.isPaidThisMonth;
 
-          // Ang Overdue ay true lang kung: Lumipas na ang date AND hindi pa bayad ngayong buwan
           const isOverdue = now > nextPayment && !isPaidThisMonth;
 
           // --- COUNTDOWN LOGIC ---
@@ -204,14 +218,12 @@ export function CreditTracker() {
             countdownText = `${diffHours}h left`;
           }
 
-          // CRITICAL: Within 24 hours at hindi pa bayad
           const isCritical =
             !isFullyPaid &&
             !isPaidThisMonth &&
             diffMs < 24 * 60 * 60 * 1000 &&
             diffMs > 0;
 
-          // URGENT: Within 3 days at hindi pa bayad
           const isUrgent =
             !isFullyPaid &&
             !isPaidThisMonth &&
@@ -222,7 +234,6 @@ export function CreditTracker() {
           const isValidTime = !isNaN(nextPayment.getTime());
           const progress = (loan.totalPaid / loan.totalAmount) * 100;
 
-          // Status flags para sa UI
           const showWarning = (isCritical || isOverdue) && !isPaidThisMonth;
           const showUrgent = isUrgent && !isPaidThisMonth;
 
@@ -528,6 +539,7 @@ export function CreditTracker() {
   );
 }
 
+// Transaction Flow component (pwedeng i-keep sa parehong file o i-separate)
 function CreditTransactionFlow({
   creditorName,
   creditId,
@@ -540,7 +552,6 @@ function CreditTransactionFlow({
   if (!allTransactions)
     return <div className="py-2 animate-pulse h-4 bg-slate-50 rounded" />;
 
-  // Filter based on creditId (mas accurate kaysa title matching)
   const payments = allTransactions
     .filter((tx) => tx.creditId === creditId)
     .sort((a, b) => b.dueDate - a.dueDate);
@@ -563,8 +574,8 @@ function CreditTransactionFlow({
             key={p._id}
             className={cn(
               "flex justify-between items-center text-xs py-1.5 border-b border-slate-50 last:border-0",
-              isVoided && "opacity-40 grayscale", // Make the "wrong" one look inactive
-              isReversal && "bg-blue-50/50 rounded px-1", // Highlight the correction
+              isVoided && "opacity-40 grayscale",
+              isReversal && "bg-blue-50/50 rounded px-1",
             )}
           >
             <div className="flex flex-col">
