@@ -152,7 +152,7 @@ export function AccountList() {
           {selectedAccount && (
             <div className="space-y-6 p-4 md:p-0">
               {/* Modern Balance Card */}
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 to-slate-800 p-8 text-white shadow-2xl">
+              <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-slate-900 to-slate-800 p-8 text-white shadow-2xl">
                 <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">

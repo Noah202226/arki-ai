@@ -115,7 +115,7 @@ export function AddTransactionDialog() {
         </Button>
       </div>
 
-      <DialogContent className="sm:max-w-[425px] rounded-t-3xl sm:rounded-3xl border-none shadow-2xl">
+      <DialogContent className="sm:max-w-106.25 rounded-t-3xl sm:rounded-3xl border-none shadow-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-black italic uppercase tracking-tighter">
             <ReceiptText className="w-5 h-5 text-indigo-500" />
@@ -132,13 +132,13 @@ export function AddTransactionDialog() {
                   value="expense"
                   className="rounded-lg py-2 data-[state=active]:bg-rose-500 data-[state=active]:text-white font-bold transition-all"
                 >
-                  Outflow
+                  Expenses
                 </TabsTrigger>
                 <TabsTrigger
                   value="income"
                   className="rounded-lg py-2 data-[state=active]:bg-emerald-500 data-[state=active]:text-white font-bold transition-all"
                 >
-                  Inflow
+                  Income
                 </TabsTrigger>
               </TabsList>
             </Tabs>
