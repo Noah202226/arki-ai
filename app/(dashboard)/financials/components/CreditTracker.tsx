@@ -69,47 +69,14 @@ export function CreditTracker() {
   const overallProgress =
     totalDebt > 0 ? ((totalDebt - totalRemaining) / totalDebt) * 100 : 0;
 
-  // --- BAGONG UPDATE SA DATE LOGIC ---
-  const getNextPaymentDate = (dueDay: number | undefined | null) => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
-
-    // 1. Alamin kung Timestamp o Day Number ang gamit (Security Check)
-    let day = dueDay ?? 1;
-    if (day > 31) {
-      day = new Date(day).getDate();
-    }
-
-    // 2. Determine if we are looking at this month or next month
-    let targetMonth = currentMonth;
-    if (now.getDate() > day) {
-      targetMonth = currentMonth + 1;
-    }
-
-    // 3. EOM CLAMPING: Kunin ang huling araw ng target month
-    // Halimbawa: Kung day=31 pero targetMonth=February, magiging 28.
-    const lastDayOfTargetMonth = new Date(
-      currentYear,
-      targetMonth + 1,
-      0,
-    ).getDate();
-    const actualSafeDay = Math.min(day, lastDayOfTargetMonth);
-
-    return new Date(currentYear, targetMonth, actualSafeDay);
-  };
-  // --- END NG UPDATE ---
-
   // I-sort ang credits array
   const sortedCredits = [...(credits || [])].sort((a, b) => {
-    const aPaid = a.remainingBalance <= 0;
-    const bPaid = b.remainingBalance <= 0;
-    if (aPaid !== bPaid) return aPaid ? 1 : -1;
+    if (a.isPaidThisMonth !== b.isPaidThisMonth) {
+      return a.isPaidThisMonth ? 1 : -1;
+    }
 
-    const dateA = getNextPaymentDate(a.dueDate).getTime();
-    const dateB = getNextPaymentDate(b.dueDate).getTime();
-
-    return dateA - dateB;
+    // Isunod ang pinaka-malapit na due date
+    return a.nextPaymentDate - b.nextPaymentDate;
   });
 
   return (
@@ -194,16 +161,25 @@ export function CreditTracker() {
       <div className="grid gap-4 sm:grid-cols-2">
         {sortedCredits.map((loan) => {
           const isFullyPaid = loan.remainingBalance <= 0;
-          const now = new Date();
 
-          // --- UPDATE DITO: Paggamit ng pinagandang getNextPaymentDate ---
-          const nextPayment = getNextPaymentDate(loan.dueDate);
+          const getPHNow = () => {
+            const tempDate = new Date();
+            // Converts current time to a string in Manila timezone, then back to a Date object
+            return new Date(
+              tempDate.toLocaleString("en-US", { timeZone: "Asia/Manila" }),
+            );
+          };
+
+          const now = getPHNow();
+          const nowMs = now.getTime(); // Get current time in milliseconds
+
           const isPaidThisMonth = loan.isPaidThisMonth;
 
-          const isOverdue = now > nextPayment && !isPaidThisMonth;
+          // Fix: Compare numbers to numbers
+          const isOverdue = nowMs > loan.nextPaymentDate && !isPaidThisMonth;
 
           // --- COUNTDOWN LOGIC ---
-          const diffMs = nextPayment.getTime() - now.getTime();
+          const diffMs = loan.nextPaymentDate - nowMs;
           const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
           const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
 
@@ -231,7 +207,7 @@ export function CreditTracker() {
 
           const hasDueDate =
             loan.dueDate !== undefined && loan.dueDate !== null;
-          const isValidTime = !isNaN(nextPayment.getTime());
+          const isValidTime = !isNaN(loan.nextPaymentDate);
           const progress = (loan.totalPaid / loan.totalAmount) * 100;
 
           const showWarning = (isCritical || isOverdue) && !isPaidThisMonth;
@@ -284,9 +260,9 @@ export function CreditTracker() {
                     </div>
 
                     {hasDueDate && isValidTime ? (
-                      <p
+                      <div
                         className={cn(
-                          "text-[10px] font-bold px-2 py-0.5 rounded-full w-fit",
+                          "text-[10px] font-bold px-2 py-0.5 rounded-full w-fit flex items-center gap-1",
                           isPaidThisMonth
                             ? "bg-green-100 text-green-700"
                             : showWarning
@@ -296,13 +272,14 @@ export function CreditTracker() {
                                 : "bg-slate-100 text-slate-500",
                         )}
                       >
-                        {isPaidThisMonth
-                          ? "SETTLED FOR THIS MONTH"
-                          : showWarning
-                            ? "⚠️ PAY BY: "
-                            : "NEXT: "}
-                        {format(nextPayment, "MMM dd, yyyy")}
-                      </p>
+                        <span>
+                          {isPaidThisMonth
+                            ? `SETTLED FOR THIS MONTH, NEXT: ${format(loan.nextPaymentDate, "MMM dd, yyyy")}`
+                            : showWarning
+                              ? `⚠️ PAY BY: ${format(loan.nextPaymentDate, "MMM dd, yyyy")}`
+                              : `NEXT: ${format(loan.nextPaymentDate, "MMM dd, yyyy")}`}
+                        </span>
+                      </div>
                     ) : (
                       <p className="text-[10px] bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded-full w-fit">
                         ⚠️ SET DUE DAY

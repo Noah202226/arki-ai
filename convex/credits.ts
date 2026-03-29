@@ -93,18 +93,18 @@ export const getCreditSummary = query({
 
       // 2. Kalkulahin ang Next Due Date
       let nextDueDate = new Date(currentYear, currentMonth, actualDueDay);
-      let isOverdue = false;
 
       if (isPaidThisMonth) {
         // Kung bayad na ngayong buwan, ang next due date ay sa susunod na buwan na.
         nextDueDate.setMonth(nextDueDate.getMonth() + 1);
-      } else {
-        // Kung HINDI pa bayad, i-check natin kung lumipas na ang deadline
-        if (todayAtMidnight > nextDueDate.getTime()) {
-          isOverdue = true;
-          // WAG i-move ang nextDueDate para manatili itong overdue sa kasalukuyang buwan
-        }
       }
+
+      //  I-calculate ang isOverdue base sa logic na:
+      // Hindi pa bayad ngayong buwan AT lumipas na ang due day.
+      const isOverdue =
+        !isPaidThisMonth &&
+        todayAtMidnight >
+          new Date(currentYear, currentMonth, actualDueDay).getTime();
 
       const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
       const remainingBalance = credit.totalAmount - totalPaid;
