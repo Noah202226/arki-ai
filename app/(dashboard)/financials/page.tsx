@@ -47,24 +47,24 @@ export default function FinancialsPage() {
           </section>
 
           <div className="bg-white dark:bg-slate-900 rounded-2xl border shadow-sm overflow-hidden">
-            <div className="p-6 border-b flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-              <h3 className="font-bold text-lg">Transaction History</h3>
-              <span className="text-xs text-slate-500 font-medium bg-white dark:bg-slate-900 px-2 py-1 rounded border">
-                Recent 30 days
-              </span>
-            </div>
-            <div className="p-0">
-              <TransactionHistory />
-            </div>
+            <section className="bg-slate-50/50 dark:bg-slate-900/50 p-6 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
+              <CreditTracker />
+            </section>
           </div>
         </div>
 
         {/* RIGHT COLUMN: Credits & Wallets (5/12 space) */}
         <div className="lg:col-span-7 space-y-8">
           {/* Credit Monitoring Section (The Excel Replacement) */}
-          <section className="bg-slate-50/50 dark:bg-slate-900/50 p-6 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
-            <CreditTracker />
-          </section>
+          <div className="p-6 border-b flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+            <h3 className="font-bold text-lg">Transaction History</h3>
+            <span className="text-xs text-slate-500 font-medium bg-white dark:bg-slate-900 px-2 py-1 rounded border">
+              Recent 30 days
+            </span>
+          </div>
+          <div className="p-0">
+            <TransactionHistory />
+          </div>
         </div>
       </div>
     </div>

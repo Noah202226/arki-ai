@@ -91,7 +91,7 @@ export function AccountList() {
         <AddAccountDialog />
       </div>
 
-      <div className="grid gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {accounts.map((account) => (
           <Card
             key={account._id}

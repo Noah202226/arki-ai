@@ -162,7 +162,7 @@ export function CreditTracker() {
         <TrendingDown className="absolute -right-6 -bottom-6 w-32 h-32 text-white/3 -rotate-12" />
       </Card>
       {/* 3. Individual Credits */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-1">
         {sortedCredits.map((loan) => {
           const isFullyPaid = loan.remainingBalance <= 0;
 

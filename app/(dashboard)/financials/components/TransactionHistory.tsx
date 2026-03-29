@@ -50,7 +50,7 @@ export function TransactionHistory() {
   });
 
   return (
-    <div className="rounded-md border overflow-hidden">
+    <div className="rounded-md border max-h-100 overflow-y-auto pr-2">
       <table className="w-full text-sm">
         <thead className="bg-slate-50 dark:bg-slate-900 border-b">
           <tr>
