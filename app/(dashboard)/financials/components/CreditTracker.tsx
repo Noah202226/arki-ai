@@ -25,6 +25,7 @@ import {
   TrendingDown,
   AlertCircle,
   PlusCircle,
+  Plus,
 } from "lucide-react";
 import { AddCreditDialog } from "./AddCreditDialog";
 import {
@@ -40,8 +41,11 @@ import { useState } from "react";
 import { EditCreditDialog } from "./EditCreditDialog";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useTransactionStore } from "@/app/store/use-transaction-store";
 
 export function CreditTracker() {
+  const { onOpen } = useTransactionStore();
+
   const credits = useQuery(api.credits.getCreditSummary);
   const removeCredit = useMutation(api.credits.deleteCredit);
   const archive = useMutation(api.credits.archiveCredit);
@@ -118,7 +122,7 @@ export function CreditTracker() {
               />
             </div>
 
-            <div className="md:col-span-5 grid grid-cols-2 gap-4">
+            <div className="md:col-span-5 grid grid-cols-1 gap-4">
               <div className="space-y-1">
                 <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">
                   Remaining
@@ -212,6 +216,11 @@ export function CreditTracker() {
 
           const showWarning = (isCritical || isOverdue) && !isPaidThisMonth;
           const showUrgent = isUrgent && !isPaidThisMonth;
+
+          const handleQuickPay = (id: string, name: string) => {
+            // This triggers the FAB and pre-fills the data
+            onOpen(`Payment for ${name}`, "Debt Payment", id);
+          };
 
           return (
             <Card
@@ -393,11 +402,16 @@ export function CreditTracker() {
                       Archive Completed Loan
                     </Button>
                   ) : (
-                    <AddTransactionDialog
-                      initialCategory="expense"
-                      initialTitle={`Payment for ${loan.creditorName}`}
-                      creditId={loan._id}
-                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-indigo-600 hover:bg-indigo-50 font-bold"
+                      onClick={() =>
+                        handleQuickPay(loan._id, loan.creditorName)
+                      }
+                    >
+                      <Plus className="w-4 h-4 mr-1" /> Pay
+                    </Button>
                   )}
 
                   <div className="flex-1" />

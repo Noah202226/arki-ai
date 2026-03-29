@@ -70,7 +70,7 @@ export function AddFundsDialog({
       <DialogTrigger asChild>
         <Button
           size="sm"
-          className="bg-green-600 hover:bg-green-700 h-9 px-4 gap-2 shadow-lg"
+          className="bg-green-600 hover:bg-green-700 hover:cursor-pointer h-9 px-4 gap-2 shadow-lg"
         >
           <PlusCircle className="w-4 h-4" /> Add Money
         </Button>

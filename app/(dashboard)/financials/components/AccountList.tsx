@@ -30,6 +30,7 @@ import {
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { AccountFlow } from "./AccountFlow";
+import { TransferDialog } from "./TransferDialog";
 
 export function AccountList() {
   const accounts = useQuery(api.accounts.getAccounts);
@@ -140,7 +141,7 @@ export function AccountList() {
         open={!!selectedAccount}
         onOpenChange={(open) => !open && setSelectedAccount(null)}
       >
-        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto p-2">
           <SheetHeader className="mb-6">
             <SheetTitle>Account Details</SheetTitle>
             <SheetDescription>
@@ -149,36 +150,46 @@ export function AccountList() {
           </SheetHeader>
 
           {selectedAccount && (
-            <div className="space-y-6">
-              <div className="bg-slate-950 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden group">
-                <div className="relative z-10 flex justify-between items-center">
-                  <div className="space-y-1">
-                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-[0.2em]">
+            <div className="space-y-6 p-4 md:p-0">
+              {/* Modern Balance Card */}
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 to-slate-800 p-8 text-white shadow-2xl">
+                <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
                       Available Balance
                     </p>
-                    <h3 className="text-3xl font-black font-mono">
-                      ₱
+                    <h3 className="mt-1 text-4xl font-black tracking-tight font-mono">
+                      ₱{" "}
                       {selectedAccount.balance.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                       })}
                     </h3>
                   </div>
 
-                  <AddFundsDialog
-                    accountId={selectedAccount._id}
-                    accountName={selectedAccount.accountName}
-                    onSuccess={() => setSelectedAccount(null)}
-                  />
+                  <div className="flex flex-col items-center gap-3">
+                    <AddFundsDialog
+                      accountId={selectedAccount._id}
+                      accountName={selectedAccount.accountName}
+                    />
+                    <TransferDialog
+                      sourceAccount={selectedAccount}
+                      allAccounts={accounts}
+                    />
+                  </div>
                 </div>
-                <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Wallet className="w-24 h-24 rotate-12" />
-                </div>
+
+                {/* Subtle Background Pattern */}
+                <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-blue-500/10 blur-3xl" />
+                <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-indigo-500/10 blur-3xl" />
               </div>
 
+              {/* Activity Section */}
               <div className="space-y-4">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">
-                  Recent Activity
-                </h4>
+                <div className="flex items-center justify-between px-1">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                    Recent Activity
+                  </h4>
+                </div>
                 <AccountFlow accountId={selectedAccount._id} />
               </div>
             </div>

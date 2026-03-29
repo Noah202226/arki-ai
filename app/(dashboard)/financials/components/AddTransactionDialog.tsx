@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useUser } from "@clerk/nextjs";
 
 // Shadcn UI
 import { Button } from "@/components/ui/button";
@@ -32,42 +31,46 @@ import {
 } from "@/components/ui/popover";
 
 // Icons
-import { Plus, Loader2, Calendar as CalendarIcon } from "lucide-react";
+import {
+  Plus,
+  Loader2,
+  Calendar as CalendarIcon,
+  Wallet,
+  ReceiptText,
+} from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
-export function AddTransactionDialog({
-  initialTitle = "",
-  initialCategory = "General",
-  creditId,
-}: {
-  initialTitle?: string;
-  initialCategory?: string;
-  creditId?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+// Zustand Store
+import { useTransactionStore } from "@/app/store/use-transaction-store";
 
-  // Mutations & Queries
+export function AddTransactionDialog() {
+  // 1. Access the store
+  const { isOpen, onClose, initialData, onOpen } = useTransactionStore();
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const addTransaction = useMutation(api.financials.addTransaction);
   const accounts = useQuery(api.accounts.getAccounts);
 
-  // Form States
+  // 2. Local form states
   const [type, setType] = useState("expense");
-  const [title, setTitle] = useState(initialTitle);
+  const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [accountId, setAccountId] = useState("");
-  const [category, setCategory] = useState(initialCategory);
-  const [date, setDate] = useState<Date>(new Date()); // Default to today
+  const [category, setCategory] = useState("General");
+  const [date, setDate] = useState<Date>(new Date());
 
+  // 3. Sync internal form states whenever the dialog opens or initialData changes
   useEffect(() => {
-    if (open) {
-      setTitle(initialTitle);
-      setCategory(initialCategory);
+    if (isOpen) {
+      setTitle(initialData.title || "");
+      setCategory(initialData.category || "General");
+      // If it's a debt payment, force 'expense' type
+      setType(initialData.creditId ? "expense" : "expense");
       setDate(new Date());
-      setAmount(""); // Siguraduhin na laging malinis ang amount
+      setAmount(""); // Clear amount for new entry
     }
-  }, [open, initialTitle, initialCategory]);
+  }, [isOpen, initialData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,10 +78,9 @@ export function AddTransactionDialog({
 
     setIsSubmitting(true);
     try {
-      // Kung may creditId, force natin na "Debt Payment" ang category
-      // at "expense" ang type (kasi outflow ng pera ito).
-      const finalCategory = creditId ? "Debt Payment" : category;
-      const finalType = creditId ? "expense" : type;
+      // Use initialData.creditId to determine if this is a debt payment
+      const finalCategory = initialData.creditId ? "Debt Payment" : category;
+      const finalType = initialData.creditId ? "expense" : type;
 
       await addTransaction({
         title,
@@ -86,12 +88,11 @@ export function AddTransactionDialog({
         type: finalType,
         category: finalCategory,
         accountId: accountId as any,
-        creditId: creditId as any,
+        creditId: (initialData.creditId as any) || undefined,
         date: date.getTime(),
       });
 
-      setOpen(false);
-      setAmount(""); // Reset amount after success
+      onClose(); // Use store's onClose
     } catch (error) {
       console.error("Failed to add transaction:", error);
     } finally {
@@ -100,121 +101,170 @@ export function AddTransactionDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm">
-          <Plus className="w-4 h-4 mr-2" /> Add Transaction
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      {/* --- FLOATING ACTION BUTTON TRIGGER --- */}
+      <div className="fixed bottom-6 right-6 z-50 md:bottom-10 md:right-10">
+        {/* We use a standard button here because opening logic is handled by the store or DialogTrigger */}
+        <Button
+          onClick={() => onOpen()}
+          size="icon"
+          className="h-14 w-14 rounded-full bg-slate-900 shadow-2xl hover:scale-110 transition-transform active:scale-95 text-white ring-4 ring-white dark:ring-slate-950"
+        >
+          <Plus className="h-7 w-7" />
+          <span className="sr-only">Add Transaction</span>
         </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-106.25">
+      </div>
+
+      <DialogContent className="sm:max-w-[425px] rounded-t-3xl sm:rounded-3xl border-none shadow-2xl">
         <DialogHeader>
-          <DialogTitle>New Transaction</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-xl font-black italic uppercase tracking-tighter">
+            <ReceiptText className="w-5 h-5 text-indigo-500" />
+            {initialData.creditId ? "Debt Repayment" : "New Transaction"}
+          </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-          {/* Income vs Expense Toggle */}
-
-          {!creditId && (
+        <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+          {/* Only show Tabs if we aren't paying a specific debt */}
+          {!initialData.creditId && (
             <Tabs value={type} onValueChange={setType} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-2 bg-slate-100 p-1 rounded-xl">
                 <TabsTrigger
                   value="expense"
-                  className="data-[state=active]:bg-red-500 data-[state=active]:text-white"
+                  className="rounded-lg py-2 data-[state=active]:bg-rose-500 data-[state=active]:text-white font-bold transition-all"
                 >
-                  Expense
+                  Outflow
                 </TabsTrigger>
                 <TabsTrigger
                   value="income"
-                  className="data-[state=active]:bg-green-500 data-[state=active]:text-white"
+                  className="rounded-lg py-2 data-[state=active]:bg-emerald-500 data-[state=active]:text-white font-bold transition-all"
                 >
-                  Income
+                  Inflow
                 </TabsTrigger>
               </TabsList>
             </Tabs>
           )}
 
-          {creditId && (
-            <div className="bg-orange-50 border border-orange-100 p-3 rounded-lg mb-4">
-              <p className="text-[11px] font-bold text-orange-800 uppercase tracking-tight">
+          {initialData.creditId && (
+            <div className="bg-orange-50 border border-orange-100 p-4 rounded-2xl">
+              <p className="text-[10px] font-black text-orange-800 uppercase tracking-widest mb-1">
                 Repayment Mode
               </p>
-              <p className="text-[10px] text-orange-600">
-                This transaction will be recorded as a debt payment and will
-                reduce your remaining balance.
+              <p className="text-xs text-orange-600 leading-relaxed">
+                This transaction will reduce your debt balance for{" "}
+                <strong>{initialData.title}</strong>.
               </p>
             </div>
           )}
 
-          {/* DATE PICKER FIELD */}
-          <div className="space-y-2 flex flex-col">
-            <Label>Date of Transaction</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !date && "text-muted-foreground",
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={(d) => d && setDate(d)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Description</Label>
-            <Input
-              placeholder="e.g. Netflix, Salary, Grocery"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Amount (PHP)</Label>
+              <Label className="text-[10px] uppercase font-bold text-slate-400 px-1">
+                Description
+              </Label>
               <Input
-                type="number"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                placeholder="e.g. Salary, Coffee, Gloan 1"
+                className="bg-slate-50 border-none h-12 px-4 font-medium focus-visible:ring-indigo-500"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
                 required
               />
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] uppercase font-bold text-slate-400 px-1">
+                  Amount
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-3.5 text-xs font-bold text-slate-400">
+                    ₱
+                  </span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="pl-7 bg-slate-50 border-none h-12 font-mono font-bold focus-visible:ring-indigo-500"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] uppercase font-bold text-slate-400 px-1">
+                  Wallet
+                </Label>
+                <Select onValueChange={setAccountId} required>
+                  <SelectTrigger className="bg-slate-50 border-none h-12 focus:ring-indigo-500">
+                    <SelectValue placeholder="Source" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-none shadow-xl">
+                    {accounts?.map((acc) => (
+                      <SelectItem
+                        key={acc._id}
+                        value={acc._id}
+                        className="focus:bg-indigo-50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Wallet className="w-3 h-3 text-slate-400" />
+                          {acc.accountName}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label>Account</Label>
-              <Select onValueChange={setAccountId} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Account" />
-                </SelectTrigger>
-                <SelectContent>
-                  {accounts?.map((acc) => (
-                    <SelectItem key={acc._id} value={acc._id}>
-                      {acc.accountName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-[10px] uppercase font-bold text-slate-400 px-1 text-right block">
+                Transaction Date
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-medium h-12 border-slate-100 rounded-xl",
+                      !date && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4 text-indigo-500" />
+                    {date ? format(date, "PPP") : <span>Select Date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-auto p-0 rounded-2xl shadow-2xl border-none"
+                  align="center"
+                >
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={(d) => d && setDate(d)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
+          <Button
+            type="submit"
+            className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-lg shadow-xl shadow-slate-200"
+            disabled={isSubmitting}
+          >
             {isSubmitting ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : null}
-            Confirm {type === "income" ? "Inflow" : "Outflow"}
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+            ) : (
+              <Plus className="w-5 h-5 mr-2" />
+            )}
+            Confirm{" "}
+            {initialData.creditId
+              ? "Repayment"
+              : type === "income"
+                ? "Deposit"
+                : "Payment"}
           </Button>
         </form>
       </DialogContent>
