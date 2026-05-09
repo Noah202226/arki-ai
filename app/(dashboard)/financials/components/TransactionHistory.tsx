@@ -4,18 +4,28 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { Loader2, Trash2, RotateCcw, Ban } from "lucide-react";
+import {
+  Loader2,
+  Trash2,
+  RotateCcw,
+  Ban,
+  Tag,
+  ArrowUpRight,
+  ArrowDownLeft,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+
 export function TransactionHistory() {
   const transactions = useQuery(api.financials.getAllTransactions);
+  const categories = useQuery(api.categories.getCategories, {}); // Fetch your new categories
   const removeTransaction = useMutation(api.financials.softDeleteTransaction);
 
-  if (!transactions)
+  if (!transactions || !categories)
     return (
-      <div className="flex justify-center p-8">
-        <Loader2 className="animate-spin text-slate-400" />
+      <div className="flex justify-center p-12">
+        <Loader2 className="animate-spin text-indigo-500 w-8 h-8" />
       </div>
     );
 
@@ -24,158 +34,147 @@ export function TransactionHistory() {
     if (ok) {
       try {
         await removeTransaction({ id });
-        toast.success("Transaction deleted and balance reverted.");
+        toast.success("Transaction voided.");
       } catch (error) {
-        toast.error("Failed to delete transaction.");
+        toast.error("Failed to delete.");
       }
     }
   };
 
-  const sortedTransactions = transactions?.slice().sort((a, b) => {
-    // 1. Tie-breaker: If they share the same title (ignoring "Correction: ") and amount
-    const aTitle = a.title.replace("Correction: ", "");
-    const bTitle = b.title.replace("Correction: ", "");
-
-    if (
-      aTitle === bTitle &&
-      a.amount === b.amount &&
-      Math.abs(a.dueDate - b.dueDate) < 60000
-    ) {
-      // If they are basically the same transaction, put the Deleted one first
-      return a.isDeleted ? -1 : 1;
-    }
-
-    // 2. Default: Sort by date descending (newest first)
-    return b.dueDate - a.dueDate;
-  });
+  const sortedTransactions = [...transactions].sort(
+    (a, b) => b.dueDate - a.dueDate,
+  );
 
   return (
-    <div className="rounded-md border max-h-100 overflow-y-auto pr-2">
-      <table className="w-full text-sm">
-        <thead className="bg-slate-50 dark:bg-slate-900 border-b">
-          <tr>
-            <th className="p-3 text-left font-semibold">Description</th>
-            <th className="p-3 text-left font-semibold">Category</th>
-            <th className="p-3 text-right font-semibold">Amount</th>
-            <th className="p-3 text-center font-semibold">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sortedTransactions?.map((tx, index) => {
-            const isReversal = tx.type === "reversal";
-            const isDeleted = !!tx.isDeleted; // Ensure it's a boolean
+    <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+      {sortedTransactions.map((tx, index) => {
+        const isReversal = tx.type === "reversal";
+        const isDeleted = !!tx.isDeleted;
+        const isIncome = tx.type === "income";
 
-            // Check if this row is part of a pair with the next row
-            const nextTx = sortedTransactions[index + 1];
-            const isPartOfPair =
-              nextTx &&
-              tx.title.replace("Correction: ", "") ===
-                nextTx.title.replace("Correction: ", "") &&
-              tx.amount === nextTx.amount;
+        // Find the specific category details (match by name or ID)
+        const categoryMatch = categories.find(
+          (c) => c.name.toLowerCase() === tx.category?.toLowerCase(),
+        );
+        const catColor = categoryMatch?.color || "#94a3b8";
 
-            return (
-              <tr
-                key={tx._id}
+        return (
+          <div
+            key={tx._id}
+            className={cn(
+              "group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-200 hover:shadow-md",
+              isDeleted ? "bg-slate-50/50 opacity-60 grayscale" : "bg-white",
+              isReversal && "border-indigo-200 bg-indigo-50/30",
+            )}
+          >
+            {/* 1. ICON & DESCRIPTION */}
+            <div className="flex items-center gap-4">
+              <div
                 className={cn(
-                  "border-b transition-colors relative",
-                  isReversal
-                    ? "bg-indigo-50/20 dark:bg-indigo-950/10"
-                    : "hover:bg-slate-50/50",
-                  isDeleted && "opacity-60 grayscale bg-slate-50/30",
-                  // Visual "binding" - adds a blue line on the left if it's a correction pair
-                  isPartOfPair && "border-l-4 border-l-indigo-400",
+                  "w-10 h-10 rounded-full flex items-center justify-center",
+                  isIncome
+                    ? "bg-emerald-100 text-emerald-600"
+                    : "bg-rose-100 text-rose-600",
+                  isDeleted && "bg-slate-200 text-slate-400",
                 )}
+                style={
+                  !isDeleted && categoryMatch
+                    ? { backgroundColor: `${catColor}20`, color: catColor }
+                    : {}
+                }
               >
-                <td className="p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p
-                      className={cn(
-                        "font-medium",
-                        isDeleted && "line-through text-slate-500",
-                      )}
-                    >
-                      {tx.title}
-                    </p>
-                    {isReversal && (
-                      <Badge
-                        variant="secondary"
-                        className="text-[9px] h-4 bg-indigo-100 text-indigo-700 border-indigo-200"
-                      >
-                        CORRECTION
-                      </Badge>
-                    )}
-                  </div>
+                {isIncome ? (
+                  <ArrowDownLeft className="w-5 h-5" />
+                ) : (
+                  <ArrowUpRight className="w-5 h-5" />
+                )}
+              </div>
 
-                  <div className="space-y-0.5">
-                    <p className="text-[10px] text-muted-foreground uppercase">
-                      {format(tx.dueDate, "MMM dd, yyyy • hh:mm a")}
-                    </p>
-                    {isDeleted && tx.deletedAt && (
-                      <p className="text-[9px] text-red-500 font-bold uppercase flex items-center gap-1">
-                        <Ban className="h-2.5 w-2.5" />
-                        Voided at {format(tx.deletedAt, "hh:mm a")}
-                      </p>
-                    )}
-                  </div>
-                </td>
-
-                <td className="p-3 uppercase text-[10px] font-bold tracking-tighter opacity-60">
-                  {tx.type} - {tx.title}
-                </td>
-
-                <td className="p-3 text-right font-mono font-bold">
-                  {/* If deleted, we show the amount but dimmed */}
-                  <span
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4
                     className={cn(
-                      isReversal
-                        ? "text-indigo-600"
-                        : tx.type === "income"
-                          ? "text-green-600"
-                          : "text-red-600",
-                      isDeleted && "text-slate-400",
+                      "font-bold text-slate-800",
+                      isDeleted && "line-through text-slate-400",
                     )}
                   >
-                    {isReversal ? "↺" : tx.type === "income" ? "+" : "-"} ₱
-                    {tx.amount.toLocaleString()}
-                  </span>
-                </td>
-
-                <td className="p-3 text-center">
-                  {!isReversal && !isDeleted ? (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
-                      onClick={() => handleDelete(tx._id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <div className="flex justify-center">
-                      {isReversal ? (
-                        <span title="Reversal entry" className="cursor-help">
-                          <RotateCcw className="h-4 w-4 text-indigo-300" />
-                        </span>
-                      ) : (
-                        <span
-                          title={`Deleted on ${tx.deletedAt ? format(tx.deletedAt, "PPpp") : "N/A"}`}
-                          className="cursor-help"
-                        >
-                          <Ban className="h-4 w-4 text-slate-300" />
-                        </span>
-                      )}
-                    </div>
+                    {tx.title}
+                  </h4>
+                  {isReversal && (
+                    <Badge className="bg-indigo-500/10 text-indigo-600 border-none text-[9px] px-1.5 h-4">
+                      REVERSAL
+                    </Badge>
                   )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                    {format(tx.dueDate, "MMM dd • hh:mm a")}
+                  </span>
+                  {isDeleted && (
+                    <span className="text-[9px] text-rose-500 font-black uppercase flex items-center gap-0.5">
+                      <Ban className="w-3 h-3" /> Voided
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 2. CATEGORY PILL */}
+            <div className="hidden md:flex items-center">
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider"
+                style={{
+                  borderColor: `${catColor}40`,
+                  color: catColor,
+                  backgroundColor: `${catColor}10`,
+                }}
+              >
+                <Tag className="w-3 h-3" />
+                {categoryMatch?.name || tx.category || "General"}
+              </div>
+            </div>
+
+            {/* 3. AMOUNT & ACTIONS */}
+            <div className="flex items-center gap-6">
+              <div className="text-right">
+                <p
+                  className={cn(
+                    "font-mono font-black text-lg",
+                    isIncome ? "text-emerald-600" : "text-rose-600",
+                    isDeleted && "text-slate-400",
+                  )}
+                >
+                  {isIncome ? "+" : "-"}₱
+                  {tx.amount.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                  })}
+                </p>
+              </div>
+
+              <div className="w-8">
+                {!isDeleted && !isReversal ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(tx._id)}
+                    className="opacity-0 group-hover:opacity-100 h-8 w-8 text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <RotateCcw className="h-4 w-4 text-slate-200" />
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
 
       {transactions.length === 0 && (
-        <div className="p-8 text-center text-muted-foreground text-sm">
-          No transactions found.
+        <div className="py-20 text-center border-2 border-dashed rounded-3xl">
+          <p className="text-slate-400 font-medium">
+            No transactions found for this period.
+          </p>
         </div>
       )}
     </div>

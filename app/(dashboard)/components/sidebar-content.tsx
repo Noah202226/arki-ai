@@ -7,7 +7,8 @@ import {
   Receipt,
   CreditCard,
   Wallet,
-  LogOut, // Idagdag ang icon na ito
+  LogOut,
+  Settings, // Idagdag ang icon na ito
 } from "lucide-react";
 import { UserButton, useUser, useClerk } from "@clerk/nextjs"; // Idagdag ang useClerk
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ export function SidebarContent({ onSelect }: SidebarContentProps) {
     { icon: Receipt, label: "Financials", href: "/financials" },
     { icon: CreditCard, label: "Credits", href: "/credits" },
     { icon: Wallet, label: "Accounts", href: "/accounts" },
+    { name: "Settings", href: "/settings", icon: Settings },
   ];
 
   // 2. I-update ang logout handler

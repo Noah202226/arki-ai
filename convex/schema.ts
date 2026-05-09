@@ -15,6 +15,7 @@ export default defineSchema({
     amount: v.number(),
     type: v.string(), // "income" or "expense"
     category: v.string(), // Idagdag ito
+    categoryId: v.optional(v.id("categories")),
     accountId: v.id("accounts"), // Idagdag ito para ma-link sa Wallet
     creditId: v.optional(v.id("credits")),
     status: v.string(), // "completed", "pending", "paid"
@@ -25,6 +26,15 @@ export default defineSchema({
   })
     .index("by_userId_and_date", ["userId", "dueDate"])
     .index("by_account", ["accountId"]),
+
+  // NEW: CATEGORIES TABLE (For KPI Dashboard & UI)
+  categories: defineTable({
+    userId: v.string(),
+    name: v.string(), // e.g., "Food & Dining", "Utilities", "Salary"
+    type: v.string(), // "income" or "expense"
+    color: v.optional(v.string()), // e.g., "#EF4444" - Super useful for dashboard charts!
+    icon: v.optional(v.string()), // e.g., "Coffee", "Zap" (Lucide icon names)
+  }).index("by_userId_and_type", ["userId", "type"]),
 
   // 2. ACCOUNTS TABLE (Balances: GCash, Bank, etc.)
   accounts: defineTable({
@@ -42,6 +52,7 @@ export default defineSchema({
     dateReceived: v.number(), // Unix timestamp
     accountId: v.id("accounts"), // I-li-link natin kung saang account pumasok ang pera
     category: v.string(), // e.g., "Active", "Passive", "Gift"
+    categoryId: v.optional(v.id("categories")),
   }).index("by_userId_and_date", ["userId", "dateReceived"]),
 
   // Credit Schema
@@ -54,6 +65,7 @@ export default defineSchema({
     startDate: v.number(),
     dueDate: v.number(), // Dito natin ilalagay ang araw (e.g., 15 kung tuwing ika-15 ang bayad)
     category: v.optional(v.string()), // e.g., "Credit Card", "Personal Loan", "Saan-saan"
+    categoryId: v.optional(v.id("categories")),
     status: v.string(),
     totalPaid: v.number(),
     archivedAt: v.optional(v.number()),

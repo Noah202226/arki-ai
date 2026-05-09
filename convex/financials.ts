@@ -56,7 +56,7 @@ export const addTransaction = mutation({
     title: v.string(),
     amount: v.number(),
     type: v.string(),
-    category: v.string(),
+    categoryId: v.id("categories"),
     accountId: v.id("accounts"),
     creditId: v.optional(v.id("credits")),
     date: v.number(), // Ito ay gagamitin natin bilang dueDate
@@ -68,13 +68,20 @@ export const addTransaction = mutation({
     // Default to Date.now() kung walang pinasang date mula sa frontend
     const transactionDate = args.date ?? Date.now();
 
+    const selectedCategory = await ctx.db.get(args.categoryId);
+    if (!selectedCategory) throw new Error("Category not found");
+
+    // Keep debt repayments consistent even if a non-debt category is selected.
+    const finalCategoryName = args.creditId ? "Debt Payment" : selectedCategory.name;
+
     // 1. Insert Transaction (Siguraduhing match sa schema fields lang)
     const id = await ctx.db.insert("financials", {
       userId: identity.subject,
       title: args.title,
       amount: args.amount,
       type: args.type,
-      category: args.category,
+      category: finalCategoryName,
+      categoryId: args.categoryId,
       accountId: args.accountId,
       creditId: args.creditId,
       status: "completed",

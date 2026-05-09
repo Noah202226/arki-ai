@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Arc Tech Assistant
 
-## Getting Started
+A personal assistant web app for managing daily tasks and finances in one place.  
+Built with Next.js App Router, Convex, Clerk, Tailwind CSS, and shadcn/ui.
 
-First, run the development server:
+## Features
+
+- Task management with realtime create, complete, and delete.
+- Financial tracking for income, expenses, and transaction history.
+- Account and wallet balances with transfer flow support.
+- Credit/loan tracking with payment progress and due-date monitoring.
+- Clerk authentication integrated with Convex data access.
+- PWA-ready configuration for installable app behavior.
+
+## Tech Stack
+
+- Next.js 16 (App Router) + React 19
+- TypeScript
+- Convex (database + backend functions)
+- Clerk (authentication)
+- Tailwind CSS v4
+- shadcn/ui + Radix UI
+- Zustand (client-side state where needed)
+- `@ducanh2912/next-pwa` (service worker/PWA support)
+
+## Project Structure
+
+```text
+app/                  # App Router pages and dashboard UI
+  (dashboard)/        # Dashboard routes: tasks, financials, credits, accounts
+components/           # Shared UI components
+convex/               # Convex schema and backend functions
+public/               # Static assets and web manifests
+lib/                  # Utilities
+```
+
+## Prerequisites
+
+- Node.js 20+ (recommended)
+- npm
+- A Convex account/project
+- A Clerk application
+
+## Environment Variables
+
+Create a `.env.local` file in the project root:
+
+```bash
+NEXT_PUBLIC_CONVEX_URL=your_convex_deployment_url
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+CLERK_SECRET_KEY=your_clerk_secret_key
+```
+
+Notes:
+
+- `NEXT_PUBLIC_CONVEX_URL` is required by `app/ConvexClientProvider.tsx`.
+- Clerk keys are required for authenticated flows and middleware in `proxy.ts`.
+- Convex auth provider settings are defined in `convex/auth.config.ts`.
+
+## Installation
+
+```bash
+npm install
+```
+
+## Local Development
+
+Run the frontend:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+In another terminal, run Convex development sync:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npx convex dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+App runs at [http://localhost:3000](http://localhost:3000).
 
-## Learn More
+## Available Scripts
 
-To learn more about Next.js, take a look at the following resources:
+- `npm run dev` - Start Next.js dev server (Turbopack)
+- `npm run build` - Build production app
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Data Model (High Level)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Core Convex tables in `convex/schema.ts`:
 
-## Deploy on Vercel
+- `tasks`
+- `financials`
+- `accounts`
+- `income`
+- `credits`
+- `categories`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deployment Notes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Frontend can be deployed to Vercel or any Next.js-compatible host.
+- Backend functions/data are deployed through Convex.
+- PWA support is enabled in production via `next.config.ts`.
+
+## License
+
+No license file is currently included. Add one if needed for distribution.
