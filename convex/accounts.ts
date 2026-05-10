@@ -7,6 +7,7 @@ export const createAccount = mutation({
     accountName: v.string(),
     initialBalance: v.number(),
     currency: v.string(),
+    isSavings: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -18,6 +19,7 @@ export const createAccount = mutation({
       accountName: args.accountName,
       balance: args.initialBalance,
       currency: args.currency,
+      isSavings: args.isSavings ?? false,
     });
 
     // 2. Log the Initial Balance in the Financials History
@@ -116,6 +118,28 @@ export const addFunds = mutation({
     });
 
     return newBalance;
+  },
+});
+
+// NEW MUTATION: The toggle for the UI dropdown
+export const toggleSavings = mutation({
+  args: {
+    id: v.id("accounts"),
+    isSavings: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    // Optional: Check if the user owns this account before patching
+    const account = await ctx.db.get(args.id);
+    if (!account || account.userId !== identity.subject) {
+      throw new Error("Unauthorized or Account not found");
+    }
+
+    await ctx.db.patch(args.id, {
+      isSavings: args.isSavings,
+    });
   },
 });
 

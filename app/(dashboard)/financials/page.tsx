@@ -40,7 +40,7 @@ export default function FinancialsPage() {
       {/* 3. Main Dashboard Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* LEFT COLUMN: Transaction History (7/12 space) */}
-        <div className="lg:col-span-5 space-y-6">
+        <div className="lg:col-span-7 space-y-6">
           {/* Account/Wallet List */}
           <section className="space-y-4">
             <AccountList />
@@ -54,7 +54,7 @@ export default function FinancialsPage() {
         </div>
 
         {/* RIGHT COLUMN: Credits & Wallets (5/12 space) */}
-        <div className="lg:col-span-7 space-y-8">
+        <div className="lg:col-span-5 space-y-8">
           {/* Credit Monitoring Section (The Excel Replacement) */}
           <div className="p-6 border-b flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
             <h3 className="font-bold text-lg">Transaction History</h3>

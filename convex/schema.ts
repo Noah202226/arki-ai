@@ -42,6 +42,7 @@ export default defineSchema({
     accountName: v.string(),
     balance: v.number(),
     currency: v.string(),
+    isSavings: v.optional(v.boolean()),
   }).index("by_userId", ["userId"]),
 
   // 3. NEW: INCOME TABLE (Dito natin ilalagay ang Income Monitoring)

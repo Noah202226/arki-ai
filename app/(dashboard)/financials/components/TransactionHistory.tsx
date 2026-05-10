@@ -46,7 +46,7 @@ export function TransactionHistory() {
   );
 
   return (
-    <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+    <div className="space-y-3 max-h-screen overflow-y-auto pr-2 custom-scrollbar">
       {sortedTransactions.map((tx, index) => {
         const isReversal = tx.type === "reversal";
         const isDeleted = !!tx.isDeleted;
