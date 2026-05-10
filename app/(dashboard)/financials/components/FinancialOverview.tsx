@@ -2,15 +2,15 @@
 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   CalendarClock,
   TrendingUp,
   AlertCircle,
   Loader2,
-  CheckCircle2,
   Wallet,
   Info,
+  ArrowUpRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -27,6 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useState } from "react";
 
 const isDueInRange = (
   dueDateValue: number,
@@ -52,14 +53,16 @@ export function FinancialOverview() {
   const transactions = useQuery(api.financials.getTransactions);
   const credits = useQuery(api.credits.getCreditSummary);
 
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+
   if (
     summary === undefined ||
     transactions === undefined ||
     credits === undefined
   ) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500/40" />
       </div>
     );
   }
@@ -76,7 +79,7 @@ export function FinancialOverview() {
     range: { start: Date; end: Date },
     isNextMonthForecast = false,
   ) => {
-    const breakdown: { name: string; amount: number }[] = []; // 1. Manual pending bills (transactions table)
+    const breakdown: { name: string; amount: number }[] = [];
 
     const financialsDueList = transactions.filter(
       (t) =>
@@ -84,19 +87,16 @@ export function FinancialOverview() {
     );
     financialsDueList.forEach((t) =>
       breakdown.push({ name: t.title, amount: t.amount }),
-    ); // 2. Credits (Patrick, Gloan, Maya, etc.)
+    );
 
     credits.forEach((c) => {
-      if (c.remainingBalance <= 0) return; // Check kung may due date sa loob ng range
+      if (c.remainingBalance <= 0) return;
 
       if (isDueInRange(c.dueDate, range.start, range.end)) {
         const installment = c.monthlyInstallment || c.remainingBalance;
         const currentDue = Math.min(installment, c.remainingBalance);
 
         if (isNextMonthForecast) {
-          // LOGIC PARA SA NEXT MONTH:
-          // I-assume natin na mababayaran ang "This Month" portion.
-          // Kung ang matitirang balance matapos ang buwang ito ay <= 0, huwag na isama sa Next Month.
           const projectedBalanceAfterThisMonth =
             c.remainingBalance - currentDue;
           if (projectedBalanceAfterThisMonth > 0) {
@@ -107,8 +107,6 @@ export function FinancialOverview() {
             breakdown.push({ name: c.creditorName, amount: nextMonthDue });
           }
         } else {
-          // LOGIC PARA SA CURRENT WEEK/MONTH:
-          // Ibawas natin ang mga payments na nagawa na para sa specific creditor na ito sa loob ng range.
           const alreadyPaidForThisInThisRange = transactions
             .filter(
               (t) =>
@@ -130,7 +128,7 @@ export function FinancialOverview() {
       }
     });
 
-    const totalDue = breakdown.reduce((sum, item) => sum + item.amount, 0); // Para sa 'Paid' row display (ito ay record ng lahat ng pumasok na payment sa range)
+    const totalDue = breakdown.reduce((sum, item) => sum + item.amount, 0);
 
     const financialsPaid = transactions
       .filter(
@@ -165,7 +163,9 @@ export function FinancialOverview() {
       paid: week.paid,
       breakdown: week.breakdown,
       icon: AlertCircle,
-      color: "border-l-red-500",
+      accent: "bg-rose-500",
+      lightAccent: "bg-rose-50 dark:bg-rose-950/30",
+      textColor: "text-rose-600 dark:text-rose-400",
       description: "Immediate obligations",
     },
     {
@@ -174,7 +174,9 @@ export function FinancialOverview() {
       paid: month.paid,
       breakdown: month.breakdown,
       icon: Wallet,
-      color: "border-l-orange-500",
+      accent: "bg-amber-500",
+      lightAccent: "bg-amber-50 dark:bg-amber-950/30",
+      textColor: "text-amber-600 dark:text-amber-400",
       description: "Monthly budget target",
     },
     {
@@ -183,119 +185,171 @@ export function FinancialOverview() {
       paid: nextMonth.paid,
       breakdown: nextMonth.breakdown,
       icon: CalendarClock,
-      color: "border-l-blue-500",
+      accent: "bg-blue-500",
+      lightAccent: "bg-blue-50 dark:bg-blue-950/30",
+      textColor: "text-blue-600 dark:text-blue-400",
       description: "Forecasted load",
     },
     {
-      title: "Total Lifetime",
+      title: "Lifetime",
       due: credits.reduce((sum, c) => sum + c.remainingBalance, 0),
       paid: transactions
         .filter((t) => t.status === "completed" || t.status === "paid")
         .reduce((sum, t) => sum + t.amount, 0),
       breakdown: [],
       icon: TrendingUp,
-      color: "border-l-slate-900 dark:border-l-white",
-      description: "Total debt vs total paid",
+      accent: "bg-slate-900 dark:bg-white",
       isDark: true,
+      description: "Total debt vs total paid",
     },
   ];
 
   return (
-    <TooltipProvider>
+    <TooltipProvider skipDelayDuration={0} delayDuration={0}>
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <Card
             key={stat.title}
             className={cn(
-              "border-l-4 shadow-sm transition-all hover:shadow-md relative overflow-hidden",
-              stat.color,
-              stat.isDark &&
-                "bg-slate-900 text-white dark:bg-white dark:text-slate-900",
+              "group relative overflow-hidden border-none shadow-[0_4px_20px_rgb(0,0,0,0.03)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 rounded-[24px]",
+              stat.isDark
+                ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                : "bg-white dark:bg-slate-950",
             )}
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-[11px] font-black uppercase tracking-wider opacity-70">
-                {stat.title}
-              </CardTitle>
-              <stat.icon
-                className={cn("h-4 w-4", !stat.isDark && "text-slate-400")}
-              />
-            </CardHeader>
-            <CardContent>
+            {/* Top Accent Strip */}
+            <div
+              className={cn("absolute top-0 left-0 right-0 h-1", stat.accent)}
+            />
+
+            <CardContent className="p-5">
+              <div className="flex justify-between items-start mb-4">
+                <div
+                  className={cn(
+                    "p-2 rounded-xl",
+                    stat.isDark
+                      ? "bg-white/10 dark:bg-slate-100"
+                      : stat.lightAccent,
+                  )}
+                >
+                  <stat.icon
+                    className={cn(
+                      "h-4 w-4",
+                      stat.isDark
+                        ? "text-white dark:text-slate-900"
+                        : stat.textColor,
+                    )}
+                  />
+                </div>
+
+                {/* Progress Mini Pill */}
+                <div
+                  className={cn(
+                    "px-2 py-0.5 rounded-full text-[9px] font-black tracking-tighter flex items-center gap-1",
+                    stat.isDark
+                      ? "bg-white/10 text-emerald-400"
+                      : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30",
+                  )}
+                >
+                  {stat.due + stat.paid > 0
+                    ? ((stat.paid / (stat.due + stat.paid)) * 100).toFixed(0)
+                    : 0}
+                  %
+                </div>
+              </div>
+
               <div className="space-y-1">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-[10px] font-bold opacity-50 uppercase">
-                    To Pay
+                  <p className="text-[10px] font-black uppercase tracking-widest opacity-40">
+                    {stat.title}
                   </p>
                   {stat.breakdown.length > 0 && (
-                    <Tooltip>
+                    <Tooltip
+                      open={activeTooltip === stat.title}
+                      onOpenChange={(open) => {
+                        if (open) setActiveTooltip(stat.title);
+                        else setActiveTooltip(null);
+                      }}
+                      delayDuration={0}
+                    >
                       <TooltipTrigger asChild>
-                        <Info className="h-3 w-3 opacity-40 hover:opacity-100 cursor-help" />
+                        <button
+                          className="p-1 -m-1 cursor-help outline-none touch-manipulation"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setActiveTooltip(
+                              activeTooltip === stat.title ? null : stat.title,
+                            );
+                          }}
+                        >
+                          <Info className="h-3 w-3 opacity-30 hover:opacity-100 transition-opacity" />
+                        </button>
                       </TooltipTrigger>
                       <TooltipContent
-                        side="right"
-                        className="p-3 bg-white text-slate-900 border shadow-xl"
+                        side="bottom"
+                        align="start"
+                        // Prevent the tooltip from closing immediately when clicking inside it
+                        onPointerDownOutside={(e) => {
+                          if (activeTooltip === stat.title) {
+                            // Optional: handle closing here if needed
+                          }
+                        }}
+                        className="w-64 p-4 rounded-2xl shadow-2xl border border-slate-100 bg-white dark:bg-slate-900 dark:border-slate-800 z-50"
                       >
-                        <div className="space-y-2">
-                          <p className="text-[10px] font-black uppercase border-b pb-1">
-                            Breakdown
-                          </p>
-                          <div className="space-y-1.5">
-                            {stat.breakdown.map((item, i) => (
-                              <div
-                                key={i}
-                                className="flex justify-between gap-4 text-[11px]"
-                              >
-                                <span className="font-medium text-slate-500">
-                                  {item.name}
-                                </span>
-                                <span className="font-bold font-mono">
-                                  {formatPHP(item.amount)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="border-t pt-1 flex justify-between gap-4 text-[11px] font-black">
-                            <span>TOTAL</span>
-                            <span className="text-orange-600">
-                              {formatPHP(stat.due)}
-                            </span>
-                          </div>
+                        <p className="text-[10px] font-black uppercase mb-2 text-slate-400 border-b border-slate-50 dark:border-slate-800 pb-1">
+                          Breakdown
+                        </p>
+                        <div className="space-y-1.5">
+                          {stat.breakdown.map((item, i) => (
+                            <div
+                              key={i}
+                              className="flex justify-between items-center text-[10px]"
+                            >
+                              <span className="text-slate-500 font-medium truncate max-w-30">
+                                {item.name}
+                              </span>
+                              <span className="font-bold font-mono text-slate-900 dark:text-white">
+                                {formatPHP(item.amount)}
+                              </span>
+                            </div>
+                          ))}
                         </div>
                       </TooltipContent>
                     </Tooltip>
                   )}
                 </div>
-                <div className="text-xl font-black font-mono">
+
+                <h3 className="text-xl font-black font-mono tracking-tight">
                   {formatPHP(stat.due)}
-                </div>
+                </h3>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-dashed border-slate-200 dark:border-slate-700 space-y-1">
-                <div className="flex justify-between items-center">
-                  <p className="text-[10px] font-bold text-green-600 uppercase flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3" /> Paid
+              <div className="mt-4 pt-4 border-t border-slate-50 dark:border-white/5 flex items-end justify-between">
+                <div>
+                  <p className="text-[9px] font-bold uppercase opacity-40 mb-0.5">
+                    Already Paid
                   </p>
-                  <span className="text-[10px] font-bold opacity-60">
-                    {stat.due + stat.paid > 0
-                      ? ((stat.paid / (stat.due + stat.paid)) * 100).toFixed(0)
-                      : 0}
-                    %
-                  </span>
+                  <p
+                    className={cn(
+                      "text-sm font-bold font-mono",
+                      stat.isDark ? "text-emerald-400" : "text-emerald-500",
+                    )}
+                  >
+                    {formatPHP(stat.paid)}
+                  </p>
                 </div>
-                <div className="text-lg font-bold text-green-600 font-mono">
-                  {formatPHP(stat.paid)}
+                <div
+                  className={cn(
+                    "h-7 w-7 rounded-full flex items-center justify-center transition-transform group-hover:rotate-12",
+                    stat.isDark
+                      ? "bg-white/5"
+                      : "bg-slate-50 dark:bg-slate-900",
+                  )}
+                >
+                  <ArrowUpRight className="h-3 w-3 opacity-20" />
                 </div>
               </div>
-
-              <p
-                className={cn(
-                  "text-[9px] mt-2 opacity-60 italic",
-                  !stat.isDark && "text-muted-foreground",
-                )}
-              >
-                {stat.description}
-              </p>
             </CardContent>
           </Card>
         ))}
