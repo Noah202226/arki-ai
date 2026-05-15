@@ -268,8 +268,8 @@ export default function LandingPage() {
       </div>
 
       {/* CTA BAND */}
-      <div className="max-w-[1020px] mx-auto px-10 pb-16">
-        <div className="bg-[#1a1a2e] border border-white/[0.06] rounded-2xl p-12 flex items-center justify-between gap-10">
+      <div className="max-w-255 mx-auto px-10 pb-16">
+        <div className="bg-[#1a1a2e] border border-white/6 rounded-2xl p-12 flex items-center justify-between gap-10">
           <div>
             <h2 className="text-[28px] font-extrabold text-white tracking-[-0.5px] mb-2">
               Ready to take <span className="text-[#ff6b35]">control?</span>
@@ -296,7 +296,7 @@ export default function LandingPage() {
       </div>
 
       {/* FOOTER */}
-      <footer className="px-10 py-5 border-t border-white/[0.05] flex items-center justify-between">
+      <footer className="px-10 py-5 border-t border-white/5 flex items-center justify-between">
         <span className="text-[12px] text-white/20">
           © 2026 Arki. Built for personal use.
         </span>

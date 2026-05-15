@@ -8,7 +8,6 @@ export const get = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
-    // Use .withIndex to only fetch tasks belonging to THIS user
     return await ctx.db
       .query("tasks")
       .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
@@ -17,20 +16,30 @@ export const get = query({
   },
 });
 
-// Add task
+// Add task or routine
 export const add = mutation({
-  args: { text: v.string() },
+  args: {
+    text: v.string(),
+    type: v.union(v.literal("task"), v.literal("routine")),
+    priority: v.optional(
+      v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    ),
+  },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("You must be logged in to add a task");
     }
 
-    // Tag the new task with the user's unique ID (identity.subject)
     await ctx.db.insert("tasks", {
       text: args.text,
+      type: args.type,
+      priority: args.priority ?? "medium",
       isCompleted: false,
+      isDeleted: false,
       userId: identity.subject,
+      // Default routines have no lastCompleted date initially
+      lastCompleted: args.type === "routine" ? 0 : undefined,
     });
   },
 });
@@ -46,12 +55,11 @@ export const remove = mutation({
     if (!task || task.userId !== identity.subject) {
       throw new Error("Unauthorized");
     }
-    // ctx.db.delete completely removes the record matching this ID
     await ctx.db.delete(args.id);
   },
 });
 
-// Toggle Task completion
+// Toggle Task/Routine completion
 export const toggle = mutation({
   args: { id: v.id("tasks") },
   handler: async (ctx, args) => {
@@ -64,6 +72,15 @@ export const toggle = mutation({
       throw new Error("Unauthorized");
     }
 
-    await ctx.db.patch(args.id, { isCompleted: !task.isCompleted });
+    const newIsCompleted = !task.isCompleted;
+    const patchData: any = { isCompleted: newIsCompleted };
+
+    // Logic: If it's a routine and we are marking it as "Done",
+    // we update the lastCompleted timestamp to NOW.
+    if (task.type === "routine" && newIsCompleted) {
+      patchData.lastCompleted = Date.now();
+    }
+
+    await ctx.db.patch(args.id, patchData);
   },
 });

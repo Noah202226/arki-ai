@@ -3,9 +3,21 @@ import { v } from "convex/values";
 
 export default defineSchema({
   tasks: defineTable({
-    text: v.string(),
-    isCompleted: v.boolean(),
+    // THE FIX: Add the userId field
     userId: v.string(),
+
+    text: v.string(),
+    description: v.optional(v.string()),
+    isCompleted: v.boolean(),
+    isDeleted: v.boolean(),
+
+    // Support for the Task/Routine system
+    type: v.union(v.literal("task"), v.literal("routine")),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+
+    frequency: v.optional(v.union(v.literal("daily"), v.literal("weekly"))),
+    lastCompleted: v.optional(v.number()),
+    category: v.optional(v.string()),
   }).index("by_userId", ["userId"]),
 
   // 1. FINANCIALS TABLE (Payables & Subscriptions)
