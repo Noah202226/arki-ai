@@ -4,67 +4,88 @@ import { FinancialOverview } from "@/app/(dashboard)/financials/components/Finan
 import { AccountList } from "@/app/(dashboard)/financials/components/AccountList";
 import { AddTransactionDialog } from "@/app/(dashboard)/financials/components/AddTransactionDialog";
 import { TransactionHistory } from "@/app/(dashboard)/financials/components/TransactionHistory";
-import { CreditTracker } from "@/app/(dashboard)/financials/components/CreditTracker"; // Bagong Import
+import { CreditTracker } from "@/app/(dashboard)/financials/components/CreditTracker";
 import { Button } from "@/components/ui/button";
-import { FileText, Plus } from "lucide-react";
+import { FileText } from "lucide-react";
 
 export default function FinancialsPage() {
-  console.log("checkig");
   return (
-    <div className="space-y-8 pb-10 max-w-400 mx-auto">
-      {/* 1. Header Area */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6">
-        <div>
-          <h1 className="text-4xl font-extrabold tracking-tight">Financials</h1>
-          <p className="text-slate-500 mt-1">
-            Manage your cash flow, credits, and obligations in one place.
-          </p>
+    <div className="min-h-screen bg-[#f5f2ed]">
+      {/* 1. HEADER — bold two-panel navy block */}
+      <header className="bg-[#1a1a2e] flex flex-col">
+        <div className="flex flex-col sm:flex-row sm:items-stretch">
+          <div className="flex-1 px-4 sm:px-8 py-6 sm:py-7 border-b sm:border-b-0 sm:border-r border-white/[0.08]">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-2 h-2 rounded-full bg-[#ff6b35]" />
+              <span className="text-[11px] font-bold tracking-[0.12em] uppercase text-white/30">
+                Personal Finance Hub
+              </span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-none mb-1">
+              Your <span className="text-[#ff6b35]">Financials</span>
+            </h1>
+            <p className="text-sm text-white/35 mt-2">
+              Cash flow, credits, and obligations — all in one place.
+            </p>
+          </div>
+          <div className="flex sm:flex-col justify-start sm:justify-center gap-2.5 px-4 sm:px-6 py-4 sm:py-5 bg-[#13132a]">
+            <Button
+              variant="outline"
+              className="bg-white/[0.06] border-white/10 text-white/60 hover:bg-white/10 hover:text-white/80 rounded-lg text-xs font-semibold"
+            >
+              <FileText className="w-3.5 h-3.5 mr-2" /> Export Reports
+            </Button>
+            <AddTransactionDialog />
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden sm:flex border-slate-300"
-          >
-            <FileText className="w-4 h-4 mr-2" /> Export Reports
-          </Button>
-          <AddTransactionDialog />
+        <div className="border-t border-white/[0.06]">
+          <FinancialOverview />
         </div>
-      </div>
+      </header>
 
-      {/* 2. Top Stats - Overview Cards */}
-      <section>
-        <FinancialOverview />
-      </section>
-
-      {/* 3. Main Dashboard Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* LEFT COLUMN: Transaction History (7/12 space) */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* Account/Wallet List */}
-          <section className="space-y-4">
+      {/* 3. MAIN BODY — stacks on mobile, side-by-side on lg+ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x divide-[#e0dbd4]">
+        {/* LEFT COLUMN */}
+        <div className="bg-[#f5f2ed] flex flex-col divide-y divide-[#e0dbd4]">
+          <section className="p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
+                <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
+                Accounts &amp; Wallets
+              </h2>
+              <span className="text-xs text-[#ff6b35] font-semibold cursor-pointer">
+                + Add
+              </span>
+            </div>
             <AccountList />
           </section>
 
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border shadow-sm overflow-hidden">
-            <section className="bg-slate-50/50 dark:bg-slate-900/50 p-6 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
-              <CreditTracker />
-            </section>
-          </div>
+          <section className="p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
+                <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
+                Credit Tracker
+              </h2>
+              <span className="text-xs text-[#ff6b35] font-semibold cursor-pointer">
+                Manage
+              </span>
+            </div>
+            <CreditTracker />
+          </section>
         </div>
 
-        {/* RIGHT COLUMN: Credits & Wallets (5/12 space) */}
-        <div className="lg:col-span-5 space-y-8">
-          {/* Credit Monitoring Section (The Excel Replacement) */}
-          <div className="p-6 border-b flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-            <h3 className="font-bold text-lg">Transaction History</h3>
-            <span className="text-xs text-slate-500 font-medium bg-white dark:bg-slate-900 px-2 py-1 rounded border">
-              Recent 30 days
+        {/* RIGHT COLUMN — sits below on mobile */}
+        <div className="bg-white p-4 sm:p-6 border-t lg:border-t-0 border-[#e0dbd4]">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
+              <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
+              Transaction History
+            </h2>
+            <span className="text-[10px] font-bold tracking-[0.08em] bg-[#f5f2ed] border border-[#e0dbd4] text-[#888] px-3 py-1 rounded-md">
+              PAST 30 DAYS
             </span>
           </div>
-          <div className="p-0">
-            <TransactionHistory />
-          </div>
+          <TransactionHistory />
         </div>
       </div>
     </div>

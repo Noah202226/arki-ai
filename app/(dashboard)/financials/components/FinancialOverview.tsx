@@ -204,154 +204,106 @@ export function FinancialOverview() {
     },
   ];
 
+  // Replace this at the bottom of FinancialOverview.tsx — the return statement's outer div:
+
   return (
     <TooltipProvider skipDelayDuration={0} delayDuration={0}>
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-white/[0.06]">
         {stats.map((stat) => (
-          <Card
+          <div
             key={stat.title}
-            className={cn(
-              "group relative overflow-hidden border-none shadow-[0_4px_20px_rgb(0,0,0,0.03)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 rounded-[24px]",
-              stat.isDark
-                ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                : "bg-white dark:bg-slate-950",
-            )}
+            className="group relative bg-[#1a1a2e] px-6 py-5 hover:bg-[#1f1f38] transition-colors duration-200"
           >
-            {/* Top Accent Strip */}
+            {/* Accent top bar */}
             <div
-              className={cn("absolute top-0 left-0 right-0 h-1", stat.accent)}
+              className={cn(
+                "absolute top-0 left-0 right-0 h-[2px]",
+                stat.accent,
+              )}
             />
 
-            <CardContent className="p-5">
-              <div className="flex justify-between items-start mb-4">
-                <div
-                  className={cn(
-                    "p-2 rounded-xl",
-                    stat.isDark
-                      ? "bg-white/10 dark:bg-slate-100"
-                      : stat.lightAccent,
-                  )}
-                >
-                  <stat.icon
-                    className={cn(
-                      "h-4 w-4",
-                      stat.isDark
-                        ? "text-white dark:text-slate-900"
-                        : stat.textColor,
-                    )}
-                  />
-                </div>
-
-                {/* Progress Mini Pill */}
-                <div
-                  className={cn(
-                    "px-2 py-0.5 rounded-full text-[9px] font-black tracking-tighter flex items-center gap-1",
-                    stat.isDark
-                      ? "bg-white/10 text-emerald-400"
-                      : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30",
-                  )}
-                >
-                  {stat.due + stat.paid > 0
-                    ? ((stat.paid / (stat.due + stat.paid)) * 100).toFixed(0)
-                    : 0}
-                  %
-                </div>
+            <div className="flex items-center justify-between mb-3">
+              {/* Icon */}
+              <div className={cn("p-1.5 rounded-lg", "bg-white/[0.06]")}>
+                <stat.icon className="h-3.5 w-3.5 text-white/50" />
               </div>
+              {/* % pill */}
+              <div className="px-2 py-0.5 rounded-full text-[9px] font-black tracking-tighter bg-white/[0.06] text-emerald-400 flex items-center gap-1">
+                {stat.due + stat.paid > 0
+                  ? ((stat.paid / (stat.due + stat.paid)) * 100).toFixed(0)
+                  : 0}
+                %
+              </div>
+            </div>
 
-              <div className="space-y-1">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-[10px] font-black uppercase tracking-widest opacity-40">
-                    {stat.title}
-                  </p>
-                  {stat.breakdown.length > 0 && (
-                    <Tooltip
-                      open={activeTooltip === stat.title}
-                      onOpenChange={(open) => {
-                        if (open) setActiveTooltip(stat.title);
-                        else setActiveTooltip(null);
+            <div className="flex items-center gap-1.5 mb-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/30">
+                {stat.title}
+              </p>
+              {stat.breakdown.length > 0 && (
+                <Tooltip
+                  open={activeTooltip === stat.title}
+                  onOpenChange={(open) => {
+                    if (open) setActiveTooltip(stat.title);
+                    else setActiveTooltip(null);
+                  }}
+                  delayDuration={0}
+                >
+                  <TooltipTrigger asChild>
+                    <button
+                      className="p-1 -m-1 cursor-help outline-none touch-manipulation"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setActiveTooltip(
+                          activeTooltip === stat.title ? null : stat.title,
+                        );
                       }}
-                      delayDuration={0}
                     >
-                      <TooltipTrigger asChild>
-                        <button
-                          className="p-1 -m-1 cursor-help outline-none touch-manipulation"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setActiveTooltip(
-                              activeTooltip === stat.title ? null : stat.title,
-                            );
-                          }}
-                        >
-                          <Info className="h-3 w-3 opacity-30 hover:opacity-100 transition-opacity" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent
-                        side="bottom"
-                        align="start"
-                        // Prevent the tooltip from closing immediately when clicking inside it
-                        onPointerDownOutside={(e) => {
-                          if (activeTooltip === stat.title) {
-                            // Optional: handle closing here if needed
-                          }
-                        }}
-                        className="w-64 p-4 rounded-2xl shadow-2xl border border-slate-100 bg-white dark:bg-slate-900 dark:border-slate-800 z-50"
-                      >
-                        <p className="text-[10px] font-black uppercase mb-2 text-slate-400 border-b border-slate-50 dark:border-slate-800 pb-1">
-                          Breakdown
-                        </p>
-                        <div className="space-y-1.5">
-                          {stat.breakdown.map((item, i) => (
-                            <div
-                              key={i}
-                              className="flex justify-between items-center text-[10px]"
-                            >
-                              <span className="text-slate-500 font-medium truncate max-w-30">
-                                {item.name}
-                              </span>
-                              <span className="font-bold font-mono text-slate-900 dark:text-white">
-                                {formatPHP(item.amount)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
-
-                <h3 className="text-xl font-black font-mono tracking-tight">
-                  {formatPHP(stat.due)}
-                </h3>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-slate-50 dark:border-white/5 flex items-end justify-between">
-                <div>
-                  <p className="text-[9px] font-bold uppercase opacity-40 mb-0.5">
-                    Already Paid
-                  </p>
-                  <p
-                    className={cn(
-                      "text-sm font-bold font-mono",
-                      stat.isDark ? "text-emerald-400" : "text-emerald-500",
-                    )}
+                      <Info className="h-3 w-3 text-white/20 hover:text-white/60 transition-colors" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    align="start"
+                    className="w-64 p-4 rounded-2xl shadow-2xl border border-white/10 bg-[#1a1a2e] z-50"
                   >
-                    {formatPHP(stat.paid)}
-                  </p>
-                </div>
-                <div
-                  className={cn(
-                    "h-7 w-7 rounded-full flex items-center justify-center transition-transform group-hover:rotate-12",
-                    stat.isDark
-                      ? "bg-white/5"
-                      : "bg-slate-50 dark:bg-slate-900",
-                  )}
-                >
-                  <ArrowUpRight className="h-3 w-3 opacity-20" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                    <p className="text-[10px] font-black uppercase mb-2 text-white/30 border-b border-white/10 pb-1">
+                      Breakdown
+                    </p>
+                    <div className="space-y-1.5">
+                      {stat.breakdown.map((item, i) => (
+                        <div
+                          key={i}
+                          className="flex justify-between items-center text-[10px]"
+                        >
+                          <span className="text-white/50 font-medium truncate max-w-[120px]">
+                            {item.name}
+                          </span>
+                          <span className="font-bold font-mono text-white">
+                            {formatPHP(item.amount)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+
+            <h3 className="text-xl font-black font-mono tracking-tight text-white mb-3">
+              {formatPHP(stat.due)}
+            </h3>
+
+            <div className="pt-3 border-t border-white/[0.06]">
+              <p className="text-[9px] font-bold uppercase text-white/25 mb-0.5">
+                Already Paid
+              </p>
+              <p className="text-sm font-bold font-mono text-emerald-400">
+                {formatPHP(stat.paid)}
+              </p>
+            </div>
+          </div>
         ))}
       </div>
     </TooltipProvider>
