@@ -70,7 +70,7 @@ export function TaskRow({ task, onToggle, onDelete, isRoutine }: TaskRowProps) {
         variant="ghost"
         size="icon"
         onClick={() => onDelete({ id: task._id })}
-        className="opacity-0 group-hover:opacity-100 h-7 w-7 text-[#1a1a2e]/20 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
+        className="h-7 w-7 text-[#1a1a2e]/20 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
       >
         <Trash2 className="w-3.5 h-3.5" />
       </Button>

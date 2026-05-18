@@ -16,7 +16,7 @@ export function RoutinesList({
   onDelete,
 }: RoutinesListProps) {
   return (
-    <div className="bg-white p-4 sm:p-6">
+    <div className="bg-white p-4 sm:p-6 mb-20 sm:mb-0">
       <div className="flex items-center justify-between mb-5">
         <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
           <span className="w-[3px] h-[14px] rounded-sm bg-[#34d399]" />
