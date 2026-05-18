@@ -57,6 +57,7 @@ export function AddTaskDialog({
   defaultType = "task",
   onClose,
 }: AddTaskDialogProps) {
+  // ✅ ALL hooks must be called before any early return
   const { user } = useUser();
   const createTask = useMutation(api.tasks.create);
 
@@ -69,6 +70,7 @@ export function AddTaskDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // ✅ Early return AFTER all hooks
   if (!open) return null;
 
   const reset = () => {
@@ -128,13 +130,10 @@ export function AddTaskDialog({
       {/* Dialog */}
       <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none">
         <div
-          className={cn(
-            "pointer-events-auto w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl",
-            "transition-all duration-300",
-          )}
+          className="pointer-events-auto w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Drag handle (mobile) */}
+          {/* Drag handle — mobile only */}
           <div className="flex justify-center pt-3 pb-1 sm:hidden">
             <div className="w-10 h-1 rounded-full bg-[#e0dbd4]" />
           </div>
@@ -298,7 +297,7 @@ export function AddTaskDialog({
               </div>
             </div>
 
-            {/* Frequency — only for routines */}
+            {/* Frequency — routines only */}
             {type === "routine" && (
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]/40 mb-1.5 block">

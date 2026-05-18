@@ -16,6 +16,9 @@ export function RoutineManager() {
   const deleteTask = useMutation(api.tasks.remove);
   const [fabOpen, setFabOpen] = useState(false);
 
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogType, setDialogType] = useState<"task" | "routine">("task");
+
   if (tasks === undefined) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -32,9 +35,6 @@ export function RoutineManager() {
   const totalRoutines = routines.length;
   const totalAll = totalTasks + totalRoutines;
   const completedAll = completedTasks + completedRoutines;
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogType, setDialogType] = useState<"task" | "routine">("task");
 
   const statsConfig = [
     {
