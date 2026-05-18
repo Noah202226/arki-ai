@@ -117,7 +117,7 @@ export function RoutineManager() {
       </div>
 
       {/* ── FLOATING ACTION BUTTON ── */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+      <div className="fixed bottom-25 sm:bottom-6 right-6 z-999 flex flex-col items-end gap-3">
         {/* Expanded options — slide up when open */}
         <div
           className={cn(
@@ -138,7 +138,7 @@ export function RoutineManager() {
                 setDialogOpen(true);
                 setFabOpen(false);
               }}
-              className="w-12 h-12 rounded-full bg-[#34d399] text-white shadow-lg hover:bg-[#2bb885] active:scale-95 transition-all flex items-center justify-center"
+              className="w-18 h-18 rounded-full bg-[#34d399] text-white shadow-lg hover:bg-[#2bb885] active:scale-95 transition-all flex items-center justify-center"
               aria-label="Add Routine"
             >
               <Repeat className="w-5 h-5" />
@@ -156,7 +156,7 @@ export function RoutineManager() {
                 setDialogOpen(true);
                 setFabOpen(false);
               }}
-              className="w-12 h-12 rounded-full bg-[#ff6b35] text-white shadow-lg hover:bg-[#e85e2b] active:scale-95 transition-all flex items-center justify-center"
+              className="w-18 h-18 rounded-full bg-[#ff6b35] text-white shadow-lg hover:bg-[#e85e2b] active:scale-95 transition-all flex items-center justify-center"
               aria-label="Add Task"
             >
               <Target className="w-5 h-5" />
@@ -168,14 +168,14 @@ export function RoutineManager() {
         <button
           onClick={() => setFabOpen((prev) => !prev)}
           className={cn(
-            "w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all duration-200 active:scale-95",
+            "w-18 h-18 rounded-full shadow-xl flex items-center justify-center transition-all duration-200 active:scale-95",
             fabOpen
               ? "bg-[#1a1a2e] text-white rotate-45"
               : "bg-[#ff6b35] text-white hover:bg-[#e85e2b]",
           )}
           aria-label="Toggle actions"
         >
-          {fabOpen ? <X className="w-6 h-6" /> : <Plus className="w-6 h-6" />}
+          {fabOpen ? <X className="w-8 h-8" /> : <Plus className="w-8 h-8" />}
         </button>
       </div>
 

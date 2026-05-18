@@ -105,7 +105,7 @@ export function AddTransactionDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <div className="fixed bottom-6 right-6 z-50 md:bottom-10 md:right-10">
+      <div className="fixed bottom-20 sm:bottom-6 right-6 z-999 md:bottom-10 md:right-10">
         <Button
           onClick={() => onOpen()}
           size="icon"
