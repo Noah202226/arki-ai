@@ -17,29 +17,29 @@ export const get = query({
 });
 
 // Add task or routine
-export const add = mutation({
+export const create = mutation({
   args: {
+    userId: v.string(),
     text: v.string(),
+    description: v.optional(v.string()),
     type: v.union(v.literal("task"), v.literal("routine")),
-    priority: v.optional(
-      v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
-    ),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    category: v.optional(v.string()),
+    frequency: v.optional(v.union(v.literal("daily"), v.literal("weekly"))),
+    isCompleted: v.boolean(),
+    isDeleted: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("You must be logged in to add a task");
-    }
-
-    await ctx.db.insert("tasks", {
+    return await ctx.db.insert("tasks", {
+      userId: args.userId,
       text: args.text,
+      description: args.description,
       type: args.type,
-      priority: args.priority ?? "medium",
-      isCompleted: false,
-      isDeleted: false,
-      userId: identity.subject,
-      // Default routines have no lastCompleted date initially
-      lastCompleted: args.type === "routine" ? 0 : undefined,
+      priority: args.priority,
+      category: args.category,
+      frequency: args.frequency,
+      isCompleted: args.isCompleted,
+      isDeleted: args.isDeleted,
     });
   },
 });

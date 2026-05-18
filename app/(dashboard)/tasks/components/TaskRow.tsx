@@ -1,0 +1,79 @@
+import { Id } from "@/convex/_generated/dataModel";
+import { Circle, Clock, CheckCircle2, Repeat, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+
+interface TaskRowProps {
+  task: any;
+  onToggle: (args: { id: Id<"tasks"> }) => void;
+  onDelete: (args: { id: Id<"tasks"> }) => void;
+  isRoutine?: boolean;
+}
+
+export function TaskRow({ task, onToggle, onDelete, isRoutine }: TaskRowProps) {
+  const accentColor = isRoutine ? "#34d399" : "#ff6b35";
+  const accentBg = isRoutine
+    ? "rgba(52,211,153,0.10)"
+    : "rgba(255,107,53,0.10)";
+
+  return (
+    <div
+      className={cn(
+        "relative group flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all duration-150",
+        "hover:shadow-sm hover:-translate-y-[1px]",
+        task.isCompleted
+          ? "bg-[#f5f2ed] border-[#e8e4de] opacity-60"
+          : "bg-white border-[#e8e4de]",
+      )}
+    >
+      <div
+        className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ background: accentColor }}
+      />
+
+      <button
+        onClick={() => onToggle({ id: task._id })}
+        className="shrink-0 transition-transform active:scale-90"
+      >
+        {task.isCompleted ? (
+          <CheckCircle2 className="w-6 h-6" style={{ color: accentColor }} />
+        ) : (
+          <Circle className="w-6 h-6 text-[#1a1a2e]/15 group-hover:text-[#1a1a2e]/40 transition-colors" />
+        )}
+      </button>
+
+      <div className="flex-1 min-w-0">
+        <p
+          className={cn(
+            "text-sm font-bold text-[#1a1a2e] leading-tight truncate",
+            task.isCompleted && "line-through text-[#1a1a2e]/40",
+          )}
+        >
+          {task.text}
+        </p>
+        <div className="flex items-center gap-2 mt-1">
+          {isRoutine && (
+            <span
+              className="flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded"
+              style={{ background: accentBg, color: accentColor }}
+            >
+              <Repeat className="w-2.5 h-2.5" /> DAILY
+            </span>
+          )}
+          <span className="flex items-center gap-1 text-[10px] font-medium text-[#1a1a2e]/30">
+            <Clock className="w-3 h-3" /> 09:00 AM
+          </span>
+        </div>
+      </div>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => onDelete({ id: task._id })}
+        className="opacity-0 group-hover:opacity-100 h-7 w-7 text-[#1a1a2e]/20 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </Button>
+    </div>
+  );
+}
