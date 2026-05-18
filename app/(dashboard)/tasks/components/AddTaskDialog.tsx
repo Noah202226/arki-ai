@@ -128,7 +128,7 @@ export function AddTaskDialog({
       />
 
       {/* Dialog */}
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none mb-20 sm:mb-0">
         <div
           className="pointer-events-auto w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl"
           onClick={(e) => e.stopPropagation()}
