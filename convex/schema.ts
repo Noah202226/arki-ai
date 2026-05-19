@@ -83,4 +83,24 @@ export default defineSchema({
     totalPaid: v.number(),
     archivedAt: v.optional(v.number()),
   }).index("by_userId", ["userId"]),
+
+  // NEW: Payroll Tracking Table
+  workLogs: defineTable({
+    userId: v.string(),
+    date: v.string(), // Format: YYYY-MM-DD
+    cutOffPeriod: v.string(), // e.g., "May 15 - May 30"
+
+    // Computation fields
+    baseDailyRate: v.number(),
+    isWorked: v.boolean(), // Did you go to work?
+    otHours: v.number(), // Number of OT hours
+    otHourlyRate: v.number(), // Your OT rate per hour
+  }).index("by_userId", ["userId"]),
+
+  payrollSettings: defineTable({
+    userId: v.string(),
+    baseDailyRate: v.number(),
+    otHourlyRate: v.number(),
+    currentCutOff: v.string(), // e.g., "May 15 - May 30"
+  }).index("by_userId", ["userId"]),
 });

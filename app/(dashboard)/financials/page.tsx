@@ -5,6 +5,8 @@ import { AccountList } from "@/app/(dashboard)/financials/components/AccountList
 import { AddTransactionDialog } from "@/app/(dashboard)/financials/components/AddTransactionDialog";
 import { TransactionHistory } from "@/app/(dashboard)/financials/components/TransactionHistory";
 import { CreditTracker } from "@/app/(dashboard)/financials/components/CreditTracker";
+// 1. Import your new PayrollTracker here
+import { PayrollTracker } from "@/app/(dashboard)/financials/components/payroll-tracker";
 import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
 
@@ -47,6 +49,7 @@ export default function FinancialsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x divide-[#e0dbd4]">
         {/* LEFT COLUMN */}
         <div className="bg-[#f5f2ed] flex flex-col divide-y divide-[#e0dbd4]">
+          {/* Section 1: Accounts */}
           <section className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
@@ -60,6 +63,18 @@ export default function FinancialsPage() {
             <AccountList />
           </section>
 
+          {/* Section 2: NEW EXPECTED INCOME TRACKER */}
+          <section className="p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
+                <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
+                Expected Income
+              </h2>
+            </div>
+            <PayrollTracker />
+          </section>
+
+          {/* Section 3: Credits */}
           <section className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
