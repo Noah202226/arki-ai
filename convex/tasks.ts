@@ -84,3 +84,58 @@ export const toggle = mutation({
     await ctx.db.patch(args.id, patchData);
   },
 });
+
+export const resetDailyRoutines = mutation({
+  args: {
+    userId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const routines = await ctx.db
+      .query("tasks")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("type"), "routine"),
+          q.eq(q.field("isDeleted"), false),
+        ),
+      )
+      .collect();
+
+    // Reset all routines to incomplete and record lastCompleted timestamp
+    await Promise.all(
+      routines
+        .filter((r) => r.isCompleted)
+        .map((r) =>
+          ctx.db.patch(r._id, {
+            isCompleted: false,
+            lastCompleted: Date.now(),
+          }),
+        ),
+    );
+
+    return { reset: routines.filter((r) => r.isCompleted).length };
+  },
+});
+
+export const getLastRoutineReset = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    // Find the most recent lastCompleted among routines
+    const routines = await ctx.db
+      .query("tasks")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("type"), "routine"),
+          q.eq(q.field("isDeleted"), false),
+        ),
+      )
+      .collect();
+
+    const lastCompleted = routines.reduce((max, r) => {
+      return r.lastCompleted && r.lastCompleted > max ? r.lastCompleted : max;
+    }, 0);
+
+    return { lastCompleted };
+  },
+});

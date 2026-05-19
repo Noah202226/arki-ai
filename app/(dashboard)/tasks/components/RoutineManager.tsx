@@ -9,6 +9,7 @@ import { ObjectivesList } from "./ObjectivesList";
 import { RoutinesList } from "./RoutinesList";
 import { cn } from "@/lib/utils";
 import { AddTaskDialog } from "./AddTaskDialog";
+import { useDailyRoutineReset } from "../hooks/useDailyRoutineReset";
 
 export function RoutineManager() {
   const tasks = useQuery(api.tasks.get);
@@ -18,6 +19,8 @@ export function RoutineManager() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<"task" | "routine">("task");
+
+  useDailyRoutineReset();
 
   if (tasks === undefined) {
     return (
