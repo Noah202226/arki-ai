@@ -108,3 +108,46 @@ export const addWorkDay = mutation({
     });
   },
 });
+
+// Update a work day log entry
+export const updateWorkDay = mutation({
+  args: {
+    id: v.id("workLogs"),
+    date: v.string(),
+    isWorked: v.boolean(),
+    otHours: v.number(),
+    baseDailyRate: v.number(),
+    otHourlyRate: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    const existing = await ctx.db.get(args.id);
+    if (!existing || existing.userId !== identity.subject) {
+      throw new Error("Unauthorized");
+    }
+
+    const { id, ...data } = args;
+    await ctx.db.patch(id, data);
+  },
+});
+
+// Delete a work day log entry
+export const deleteWorkDay = mutation({
+  args: {
+    id: v.id("workLogs"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    const existing = await ctx.db.get(args.id);
+    if (!existing || existing.userId !== identity.subject) {
+      throw new Error("Unauthorized");
+    }
+
+    await ctx.db.delete(args.id);
+  },
+});
+
