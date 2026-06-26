@@ -1,16 +1,29 @@
 "use client";
 
+import { useState } from "react";
 import { FinancialOverview } from "@/app/(dashboard)/financials/components/FinancialOverview";
 import { AccountList } from "@/app/(dashboard)/financials/components/AccountList";
 import { AddTransactionDialog } from "@/app/(dashboard)/financials/components/AddTransactionDialog";
 import { TransactionHistory } from "@/app/(dashboard)/financials/components/TransactionHistory";
 import { CreditTracker } from "@/app/(dashboard)/financials/components/CreditTracker";
-// 1. Import your new PayrollTracker here
 import { PayrollTracker } from "@/app/(dashboard)/financials/components/payroll-tracker";
 import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react";
+import { FileText, Wallet, Calendar, ShieldAlert, History } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type TabId = "all" | "wallets" | "payroll" | "credits" | "transactions";
 
 export default function FinancialsPage() {
+  const [activeTab, setActiveTab] = useState<TabId>("all");
+
+  const tabs = [
+    { id: "all", label: "Show All", icon: FileText },
+    { id: "wallets", label: "Wallets", icon: Wallet },
+    { id: "payroll", label: "Expected Income", icon: Calendar },
+    { id: "credits", label: "Credits", icon: ShieldAlert },
+    { id: "transactions", label: "History", icon: History },
+  ] as const;
+
   return (
     <div className="min-h-screen bg-[#f5f2ed]">
       {/* 1. HEADER — bold two-panel navy block */}
@@ -45,26 +58,61 @@ export default function FinancialsPage() {
         </div>
       </header>
 
-      {/* 3. MAIN BODY — stacks on mobile, side-by-side on lg+ */}
+      {/* 2. MOBILE ONLY TAB BAR */}
+      <div className="lg:hidden sticky top-0 bg-[#f5f2ed]/90 backdrop-blur-md border-b border-[#e0dbd4] px-4 py-2.5 z-40 overflow-x-auto flex gap-2 scrollbar-none">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 border",
+                isActive
+                  ? "bg-[#ff6b35] text-white border-transparent shadow-sm"
+                  : "bg-white text-slate-600 border-[#e0dbd4] hover:bg-slate-50"
+              )}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 3. MAIN BODY — tabs on mobile, side-by-side grids on lg+ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x divide-[#e0dbd4]">
         {/* LEFT COLUMN */}
-        <div className="bg-[#f5f2ed] flex flex-col divide-y divide-[#e0dbd4]">
+        <div
+          className={cn(
+            "bg-[#f5f2ed] flex flex-col divide-y divide-[#e0dbd4]",
+            activeTab !== "all" && "divide-y-0"
+          )}
+        >
           {/* Section 1: Accounts */}
-          <section className="p-4 sm:p-6">
+          <section
+            className={cn(
+              "p-4 sm:p-6",
+              activeTab !== "all" && activeTab !== "wallets" && "hidden lg:block"
+            )}
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
                 <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
                 Accounts &amp; Wallets
               </h2>
-              <span className="text-xs text-[#ff6b35] font-semibold cursor-pointer">
-                + Add
-              </span>
             </div>
             <AccountList />
           </section>
 
-          {/* Section 2: NEW EXPECTED INCOME TRACKER */}
-          <section className="p-4 sm:p-6">
+          {/* Section 2: Expected Income */}
+          <section
+            className={cn(
+              "p-4 sm:p-6",
+              activeTab !== "all" && activeTab !== "payroll" && "hidden lg:block"
+            )}
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
                 <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
@@ -75,22 +123,29 @@ export default function FinancialsPage() {
           </section>
 
           {/* Section 3: Credits */}
-          <section className="p-4 sm:p-6">
+          <section
+            className={cn(
+              "p-4 sm:p-6",
+              activeTab !== "all" && activeTab !== "credits" && "hidden lg:block"
+            )}
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
                 <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
                 Credit Tracker
               </h2>
-              <span className="text-xs text-[#ff6b35] font-semibold cursor-pointer">
-                Manage
-              </span>
             </div>
             <CreditTracker />
           </section>
         </div>
 
-        {/* RIGHT COLUMN — sits below on mobile */}
-        <div className="bg-white p-4 sm:p-6 border-t lg:border-t-0 border-[#e0dbd4]">
+        {/* RIGHT COLUMN */}
+        <div
+          className={cn(
+            "bg-white p-4 sm:p-6 border-t lg:border-t-0 border-[#e0dbd4]",
+            activeTab !== "all" && activeTab !== "transactions" && "hidden lg:block"
+          )}
+        >
           <div className="flex items-center justify-between mb-4">
             <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
               <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />

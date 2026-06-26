@@ -162,7 +162,7 @@ export function CreditTracker() {
         <TrendingDown className="absolute -right-6 -bottom-6 w-32 h-32 text-white/3 -rotate-12" />
       </Card>
       {/* 3. Individual Credits */}
-      <div className="grid gap-4 sm:grid-cols-1">
+      <div className="flex overflow-x-auto gap-4 snap-x pb-4 md:grid md:grid-cols-1 lg:grid-cols-2 md:gap-4 scrollbar-none">
         {sortedCredits.map((loan) => {
           const isFullyPaid = loan.remainingBalance <= 0;
 
@@ -226,7 +226,7 @@ export function CreditTracker() {
             <Card
               key={loan._id}
               className={cn(
-                "group border transition-all duration-500",
+                "group border transition-all duration-500 shrink-0 w-[300px] md:w-auto snap-center",
                 isFullyPaid
                   ? "bg-green-50/30 border-green-200"
                   : "hover:border-orange-500/30",

@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 
 // --- READ: Get Financial Summary (This Week, Next Month, Total) ---
 export const getFinancialSummary = query({
@@ -225,3 +226,22 @@ export const getTransactionsByAccount = query({
       .collect();
   },
 });
+
+// Get paginated transactions
+export const getPaginatedTransactions = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return { page: [], isDone: true, continueCursor: "" };
+    }
+
+    return await ctx.db
+      .query("financials")
+      .withIndex("by_userId_and_date", (q) => q.eq("userId", identity.subject))
+      .filter((q) => q.eq(q.field("isDeleted"), false)) // Only active transactions
+      .order("desc")
+      .paginate(args.paginationOpts);
+  },
+});
+

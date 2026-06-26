@@ -1,6 +1,7 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useRef, useEffect } from "react";
+import { useMutation, useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { format, isToday, isYesterday } from "date-fns";
 import { toast } from "sonner";
@@ -8,7 +9,6 @@ import {
   Loader2,
   Trash2,
   RotateCcw,
-  Ban,
   Tag,
   ArrowUpRight,
   ArrowDownLeft,
@@ -18,11 +18,41 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
 export function TransactionHistory() {
-  const transactions = useQuery(api.financials.getAllTransactions);
+  const { results: transactions, status, loadMore } = usePaginatedQuery(
+    api.financials.getPaginatedTransactions,
+    {},
+    { initialNumItems: 50 }
+  );
   const categories = useQuery(api.categories.getCategories, {});
   const removeTransaction = useMutation(api.financials.softDeleteTransaction);
 
-  if (!transactions || !categories)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (status !== "CanLoadMore") return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore(20);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const element = loadMoreRef.current;
+    if (element) {
+      observer.observe(element);
+    }
+
+    return () => {
+      if (element) {
+        observer.unobserve(element);
+      }
+    };
+  }, [status, loadMore]);
+
+  if (transactions === undefined || categories === undefined)
     return (
       <div className="flex justify-center items-center p-20">
         <Loader2 className="animate-spin text-indigo-600 w-10 h-10" />
@@ -48,11 +78,7 @@ export function TransactionHistory() {
       minimumFractionDigits: 2,
     }).format(amount);
 
-  const sortedTransactions = [...transactions].sort(
-    (a, b) => b.dueDate - a.dueDate,
-  );
-
-  const groupedTransactions = sortedTransactions.reduce(
+  const groupedTransactions = transactions.reduce(
     (groups, tx) => {
       const date = format(tx.dueDate, "MMMM dd, yyyy");
       if (!groups[date]) groups[date] = [];
@@ -263,7 +289,19 @@ export function TransactionHistory() {
         );
       })}
 
-      {transactions.length === 0 && (
+      {/* INFINITE SCROLL TARGET */}
+      {status === "CanLoadMore" && (
+        <div ref={loadMoreRef} className="py-6 flex items-center justify-center">
+          <Loader2 className="animate-spin text-[#ff6b35] w-6 h-6" />
+        </div>
+      )}
+      {status === "LoadingMore" && (
+        <div className="py-6 flex items-center justify-center">
+          <Loader2 className="animate-spin text-[#ff6b35] w-6 h-6 animate-pulse" />
+        </div>
+      )}
+
+      {transactions.length === 0 && status !== "LoadingFirstPage" && (
         <div className="py-32 text-center border-4 border-dashed rounded-[40px] border-slate-100 dark:border-slate-900">
           <p className="text-slate-400 text-lg font-bold">
             Your ledger is currently empty.

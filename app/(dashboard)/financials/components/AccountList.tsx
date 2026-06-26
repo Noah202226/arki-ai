@@ -203,12 +203,12 @@ export function AccountList() {
   return (
     <div className="space-y-6">
       {/* ── OVERVIEW STATS GRID ── */}
-      {/* Mobile: 1 col stacked | sm: 2 col | lg: 3 col */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-[#e0dbd4] rounded-2xl overflow-hidden border border-[#e0dbd4]">
+      {/* Mobile: horizontal scroll | sm: grid */}
+      <div className="flex overflow-x-auto gap-4 snap-x pb-4 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-px sm:bg-[#e0dbd4] sm:rounded-2xl sm:overflow-hidden sm:border border-[#e0dbd4]/40 scrollbar-none">
         {overviewStats.map((stat) => (
           <div
             key={stat.label}
-            className="relative bg-[#f5f2ed] px-5 py-5 flex flex-col gap-4 group"
+            className="relative bg-[#f5f2ed] border border-[#e0dbd4]/40 sm:border-0 rounded-2xl sm:rounded-none shrink-0 w-[240px] sm:w-auto snap-center px-5 py-5 flex flex-col gap-4 group"
           >
             {/* Left accent bar */}
             <div
@@ -268,8 +268,8 @@ export function AccountList() {
       </div>
 
       {/* ── WALLET CARDS ── */}
-      {/* Mobile: 1 col | sm: 2 col | lg: 3 col */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {/* Mobile: horizontal scroll | sm: grid */}
+      <div className="flex overflow-x-auto gap-4 snap-x pb-4 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-3 scrollbar-none">
         {accounts.map((account) => {
           const branding = getAccountBranding(account.accountName);
           return (
@@ -277,7 +277,7 @@ export function AccountList() {
               key={account._id}
               onClick={() => setSelectedAccount(account)}
               className={cn(
-                "group relative bg-white border border-[#e8e4de] rounded-2xl overflow-hidden cursor-pointer",
+                "group relative bg-white border border-[#e8e4de] rounded-2xl overflow-hidden cursor-pointer shrink-0 w-[280px] sm:w-auto snap-center",
                 "hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 active:scale-[0.98]",
                 selectedAccount?._id === account._id &&
                   "ring-2 ring-[#ff6b35] ring-offset-2",
