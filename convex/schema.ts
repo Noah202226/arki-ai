@@ -95,6 +95,9 @@ export default defineSchema({
     isWorked: v.boolean(), // Did you go to work?
     otHours: v.number(), // Number of OT hours
     otHourlyRate: v.number(), // Your OT rate per hour
+    lateMinutes: v.optional(v.number()), // Late minutes recorded
+    claimed: v.optional(v.boolean()), // Has this cutoff been claimed already?
+    claimedAt: v.optional(v.number()), // Unix timestamp of claim
   }).index("by_userId", ["userId"]),
 
   payrollSettings: defineTable({
@@ -102,6 +105,12 @@ export default defineSchema({
     baseDailyRate: v.number(),
     otHourlyRate: v.number(),
     currentCutOff: v.string(), // e.g., "May 15 - May 30"
+    // Deductions
+    sssDeduction: v.optional(v.number()),
+    philhealthDeduction: v.optional(v.number()),
+    pagibigDeduction: v.optional(v.number()),
+    taxRate: v.optional(v.number()), // Percentage (e.g. 5 for 5%)
+    lateRatePerMin: v.optional(v.number()), // Deduction amount per minute late
   }).index("by_userId", ["userId"]),
 
   // Quick-add chip presets (user-customizable)
