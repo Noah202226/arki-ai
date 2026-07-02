@@ -55,12 +55,16 @@ function computeStats(logs: any[], settings: any) {
   let totalLatesMinutes = 0;
   let expectedLateDeductions = 0;
 
-  logs.forEach((log) => {
+  // Filter logs where base is not claimed
+  const unclaimedBaseLogs = logs.filter(l => !l.claimed);
+  // Filter logs where OT is not claimed
+  const unclaimedOtLogs = logs.filter(l => !l.otClaimed);
+
+  // Expected base and lates come from unclaimedBaseLogs
+  unclaimedBaseLogs.forEach((log) => {
     if (log.isWorked) {
       daysWorked += 1;
       expectedBase += log.baseDailyRate;
-      expectedOT += log.otHours * log.otHourlyRate;
-      
       const lates = log.lateMinutes || 0;
       totalLatesMinutes += lates;
       if (settings?.lateRatePerMin) {
@@ -69,14 +73,21 @@ function computeStats(logs: any[], settings: any) {
     }
   });
 
+  // Expected OT comes from unclaimedOtLogs
+  unclaimedOtLogs.forEach((log) => {
+    if (log.isWorked) {
+      expectedOT += log.otHours * log.otHourlyRate;
+    }
+  });
+
   const sss = settings?.sssDeduction || 0;
   const philhealth = settings?.philhealthDeduction || 0;
   const pagibig = settings?.pagibigDeduction || 0;
-  const gross = expectedBase + expectedOT;
   
-  const tax = settings?.taxRate ? (gross * (settings.taxRate / 100)) : 0;
+  // Tax applies to the gross base pay since OT is claimed separately
+  const tax = settings?.taxRate ? (expectedBase * (settings.taxRate / 100)) : 0;
   const totalDeductions = sss + philhealth + pagibig + expectedLateDeductions + tax;
-  const netPay = Math.max(0, gross - totalDeductions);
+  const netBasePay = Math.max(0, expectedBase - totalDeductions);
 
   return {
     daysWorked,
@@ -89,8 +100,8 @@ function computeStats(logs: any[], settings: any) {
     pagibigDeduction: pagibig,
     taxDeduction: tax,
     totalDeductions,
-    totalExpected: gross,
-    netPay,
+    totalExpected: expectedBase, // gross base
+    netPay: netBasePay, // net base pay without OT
   };
 }
 
@@ -114,14 +125,14 @@ export const getCutOffStats = query({
       .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
       .collect();
 
-    // Active/Current cutoff logs (only unclaimed ones)
+    // Active/Current cutoff logs (only unclaimed base OR unclaimed OT logs)
     const currentLogs = allLogs.filter(
-      (log) => log.cutOffPeriod === activeCutOff && !log.claimed
+      (log) => log.cutOffPeriod === activeCutOff && (!log.claimed || !log.otClaimed)
     );
 
-    // Next/Future cutoff logs (all logs that belong to other periods OR claimed state isn't active)
+    // Next/Future cutoff logs
     const nextLogs = allLogs.filter(
-      (log) => log.cutOffPeriod !== activeCutOff && !log.claimed
+      (log) => log.cutOffPeriod !== activeCutOff && (!log.claimed || !log.otClaimed)
     );
 
     // Compute stats
@@ -139,7 +150,7 @@ export const getCutOffStats = query({
   },
 });
 
-// Log a work day with optional late minutes
+// Log a work day with default claimed states as false
 export const addWorkDay = mutation({
   args: {
     date: v.string(),
@@ -158,6 +169,7 @@ export const addWorkDay = mutation({
       userId: identity.subject,
       ...args,
       claimed: false,
+      otClaimed: false,
     });
   },
 });
@@ -205,59 +217,77 @@ export const deleteWorkDay = mutation({
   },
 });
 
-// Claim expected income and deposit it directly to a wallet/account
+// Claim expected base income or OT separately and deposit it directly to a wallet
 export const claimPayroll = mutation({
   args: {
     cutOffPeriod: v.string(),
     accountId: v.id("accounts"),
-    netAmount: v.number(),
+    amount: v.number(),
+    claimType: v.union(v.literal("base"), v.literal("ot")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthenticated");
 
-    // 1. Find all active unclaimed logs for this cutoff
+    // 1. Find all active logs for this cutoff
     const logs = await ctx.db
       .query("workLogs")
       .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
       .filter((q) => q.eq(q.field("cutOffPeriod"), args.cutOffPeriod))
       .collect();
 
-    const unclaimedLogs = logs.filter((l) => !l.claimed);
-    if (unclaimedLogs.length === 0) {
-      throw new Error("No unclaimed work logs found for this cutoff period.");
-    }
-
-    // 2. Mark logs as claimed
     const now = Date.now();
-    for (const log of unclaimedLogs) {
-      await ctx.db.patch(log._id, {
-        claimed: true,
-        claimedAt: now,
-      });
+
+    if (args.claimType === "base") {
+      const unclaimedBase = logs.filter((l) => !l.claimed);
+      if (unclaimedBase.length === 0) {
+        throw new Error("No unclaimed base pay work logs found.");
+      }
+      for (const log of unclaimedBase) {
+        await ctx.db.patch(log._id, {
+          claimed: true,
+          claimedAt: now,
+        });
+      }
+    } else {
+      const unclaimedOt = logs.filter((l) => !l.otClaimed);
+      if (unclaimedOt.length === 0) {
+        throw new Error("No unclaimed overtime work logs found.");
+      }
+      for (const log of unclaimedOt) {
+        await ctx.db.patch(log._id, {
+          otClaimed: true,
+          otClaimedAt: now,
+        });
+      }
     }
 
-    // 3. Deposit money into target account
+    // 2. Deposit money into target account
     const account = await ctx.db.get(args.accountId);
     if (!account || account.userId !== identity.subject) {
       throw new Error("Target account not found");
     }
     await ctx.db.patch(args.accountId, {
-      balance: account.balance + args.netAmount,
+      balance: account.balance + args.amount,
     });
 
-    // 4. Create category link for Payroll/Salary if it exists
+    // 3. Create category link for Payroll/Salary if it exists
     const categoryMatch = await ctx.db
       .query("categories")
       .withIndex("by_userId_and_type", (q) => q.eq("userId", identity.subject).eq("type", "income"))
       .filter((q) => q.eq(q.field("name"), "Salary"))
       .first();
 
-    // 5. Create transaction entry
+    // 4. Create transaction entry
+    const titleText =
+      args.claimType === "base"
+        ? `Claimed Base Pay Cutoff: ${args.cutOffPeriod}`
+        : `Claimed Overtime Cutoff: ${args.cutOffPeriod}`;
+
     await ctx.db.insert("financials", {
       userId: identity.subject,
-      title: `Claimed Cutoff: ${args.cutOffPeriod}`,
-      amount: args.netAmount,
+      title: titleText,
+      amount: args.amount,
       type: "income",
       category: "Salary",
       categoryId: categoryMatch?._id,

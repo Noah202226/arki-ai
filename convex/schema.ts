@@ -96,8 +96,10 @@ export default defineSchema({
     otHours: v.number(), // Number of OT hours
     otHourlyRate: v.number(), // Your OT rate per hour
     lateMinutes: v.optional(v.number()), // Late minutes recorded
-    claimed: v.optional(v.boolean()), // Has this cutoff been claimed already?
-    claimedAt: v.optional(v.number()), // Unix timestamp of claim
+    claimed: v.optional(v.boolean()), // Has this cutoff's base pay been claimed?
+    claimedAt: v.optional(v.number()), // Unix timestamp of base pay claim
+    otClaimed: v.optional(v.boolean()), // Has this cutoff's OT pay been claimed?
+    otClaimedAt: v.optional(v.number()), // Unix timestamp of OT claim
   }).index("by_userId", ["userId"]),
 
   payrollSettings: defineTable({
