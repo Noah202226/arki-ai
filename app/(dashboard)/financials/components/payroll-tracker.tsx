@@ -727,7 +727,7 @@ export function PayrollTracker() {
                             +{log.otHours}h OT {log.otClaimed ? "(Claimed)" : ""}
                           </span>
                         )}
-                        {log.isWorked && log.lateMinutes > 0 && (
+                        {log.isWorked && (log.lateMinutes ?? 0) > 0 && (
                           <span className="text-[9px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded-full">
                             {log.lateMinutes}m Late
                           </span>
