@@ -37,6 +37,7 @@ import {
   Wallet,
   ReceiptText,
   Tag,
+  Zap,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -52,33 +53,39 @@ export function AddTransactionDialog() {
   const addTransaction = useMutation(api.financials.addTransaction);
   const accounts = useQuery(api.accounts.getAccounts);
 
-  // 1. Fetch categories based on the current type (Income/Expense)
   const categories = useQuery(api.categories.getCategories, {
     type: undefined,
   });
+
+  // Fetch custom quick chips from the database!
+  const quickChips = useQuery(api.quickChips.getQuickChips);
 
   const [type, setType] = useState("expense");
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [accountId, setAccountId] = useState("");
-  // 2. Change state to categoryId
   const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState<Date>(new Date());
 
   useEffect(() => {
     if (isOpen) {
       setTitle(initialData.title || "");
-      // Reset category selection when opening
       setCategoryId("");
-      setType(initialData.creditId ? "expense" : "expense");
+      setType("expense");
       setDate(new Date());
       setAmount("");
     }
   }, [isOpen, initialData]);
 
+  /** Apply a quick-add preset from user database */
+  const applyPreset = (preset: { label: string; categoryId: string; type: string }) => {
+    setTitle(preset.label);
+    setType(preset.type);
+    setCategoryId(preset.categoryId);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 3. Ensure categoryId is selected
     if (!title || !amount || !accountId || !categoryId) return;
 
     setIsSubmitting(true);
@@ -89,7 +96,7 @@ export function AddTransactionDialog() {
         title,
         amount: Number(amount),
         type: finalType,
-        categoryId: categoryId as any, // Send the ID, not a string
+        categoryId: categoryId as any,
         accountId: accountId as any,
         creditId: (initialData.creditId as any) || undefined,
         date: date.getTime(),
@@ -102,6 +109,9 @@ export function AddTransactionDialog() {
       setIsSubmitting(false);
     }
   };
+
+  // Filter db quick chips based on current type (expense / income)
+  const visiblePresets = quickChips?.filter((p) => p.type === type) ?? [];
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -124,7 +134,7 @@ export function AddTransactionDialog() {
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+        <form onSubmit={handleSubmit} className="space-y-5 pt-2">
           {!initialData.creditId && (
             <Tabs value={type} onValueChange={setType} className="w-full">
               <TabsList className="grid w-full grid-cols-2 bg-slate-100 p-1 rounded-xl">
@@ -142,6 +152,42 @@ export function AddTransactionDialog() {
                 </TabsTrigger>
               </TabsList>
             </Tabs>
+          )}
+
+          {/* ── QUICK ADD STRIP (CUSTOM CHIPS FROM DATABASE) ───────────────── */}
+          {visiblePresets.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Zap className="w-3 h-3 text-[#ff6b35]" />
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                  Quick Add
+                </span>
+              </div>
+
+              <div className="flex gap-1.5 flex-wrap">
+                {visiblePresets.map((preset) => {
+                  const isActive =
+                    title === preset.label && categoryId === preset.categoryId;
+
+                  return (
+                    <button
+                      key={preset._id}
+                      type="button"
+                      onClick={() => applyPreset(preset)}
+                      className={cn(
+                        "flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all duration-150 active:scale-95",
+                        isActive
+                          ? "bg-[#ff6b35] text-white border-[#ff6b35] shadow-sm shadow-[#ff6b35]/30"
+                          : "bg-slate-50 text-slate-600 border-slate-100 hover:border-[#ff6b35]/40 hover:bg-[#ff6b35]/5 hover:text-[#ff6b35]",
+                      )}
+                    >
+                      <span>{preset.emoji}</span>
+                      {preset.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
 
           <div className="space-y-4">
@@ -168,7 +214,6 @@ export function AddTransactionDialog() {
               </Link>
             </div>
 
-            {/* 4. NEW CATEGORY SELECT FIELD */}
             <div className="space-y-2">
               <Label className="text-[10px] uppercase font-bold text-slate-400 px-1">
                 Category

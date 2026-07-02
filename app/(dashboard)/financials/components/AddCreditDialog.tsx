@@ -104,6 +104,9 @@ export function AddCreditDialog() {
                   <SelectItem value="Business">Business</SelectItem>
                   <SelectItem value="Bank/SaaS">Bank/SaaS</SelectItem>
                   <SelectItem value="Government">Government</SelectItem>
+                  <SelectItem value="Motorcycle Installment">Motorcycle Installment</SelectItem>
+                  <SelectItem value="Gadget/Phone Installment">Gadget/Phone Installment</SelectItem>
+                  <SelectItem value="Education/Tuition">Education/Tuition</SelectItem>
                 </SelectContent>
               </Select>
             </div>

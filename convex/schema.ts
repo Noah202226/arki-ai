@@ -103,4 +103,14 @@ export default defineSchema({
     otHourlyRate: v.number(),
     currentCutOff: v.string(), // e.g., "May 15 - May 30"
   }).index("by_userId", ["userId"]),
+
+  // Quick-add chip presets (user-customizable)
+  quickChips: defineTable({
+    userId: v.string(),
+    label: v.string(),       // e.g. "Lunch", "Salary"
+    emoji: v.string(),       // e.g. "🍱"
+    type: v.string(),        // "expense" | "income"
+    categoryId: v.id("categories"),
+    order: v.optional(v.number()), // for sorting
+  }).index("by_userId", ["userId"]),
 });
