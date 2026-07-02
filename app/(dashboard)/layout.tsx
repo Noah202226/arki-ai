@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Wallet, CheckSquare, Settings, Loader2 } from "lucide-react";
-import { UserButton, useUser } from "@clerk/nextjs";
+import { Wallet, CheckSquare, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { UserNavButton } from "./components/user-nav-button";
 
 export default function DashboardLayout({
   children,
@@ -12,7 +12,6 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { user, isLoaded } = useUser();
 
   const navItems = [
     { href: "/financials", icon: Wallet, label: "Financials" },
@@ -23,7 +22,7 @@ export default function DashboardLayout({
   return (
     <div className="flex min-h-screen bg-[#fcfaf7] text-slate-800 antialiased font-sans">
       {/* SIDEBAR - Desktop */}
-      <aside className="hidden md:flex w-72 flex-col bg-white border-r border-[#e5dec9]/40 p-6 shrink-0 justify-between">
+      <aside className="hidden md:flex w-72 flex-col bg-white border-r border-[#e5dec9]/40 p-6 shrink-0 justify-between h-screen sticky top-0 overflow-y-auto">
         <div className="flex flex-col">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-10 px-2">
@@ -65,34 +64,8 @@ export default function DashboardLayout({
         </div>
 
         {/* User Profile Area */}
-        <div className="border-t border-[#e5dec9]/40 pt-4 flex items-center justify-between">
-          {isLoaded ? (
-            <div className="flex items-center gap-3 w-full">
-              <UserButton
-                appearance={{
-                  elements: {
-                    userButtonAvatarBox: "w-9 h-9 rounded-xl border border-slate-100",
-                  },
-                }}
-              />
-              <div className="flex flex-col truncate">
-                <span className="text-sm font-bold text-[#1a1a2e] truncate">
-                  {user?.fullName || "User Account"}
-                </span>
-                <span className="text-[10px] text-slate-400 truncate">
-                  {user?.primaryEmailAddress?.emailAddress}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3 w-full animate-pulse">
-              <div className="w-9 h-9 bg-slate-100 rounded-xl" />
-              <div className="flex-1 space-y-1.5">
-                <div className="h-3.5 bg-slate-100 rounded w-2/3" />
-                <div className="h-2.5 bg-slate-100 rounded w-1/2" />
-              </div>
-            </div>
-          )}
+        <div className="border-t border-[#e5dec9]/40 pt-4">
+          <UserNavButton side="right" />
         </div>
       </aside>
 
@@ -122,6 +95,11 @@ export default function DashboardLayout({
             </Link>
           );
         })}
+
+        {/* User avatar — opens UserNavButton dropdown upward */}
+        <div className="relative">
+          <UserNavButton side="top" compact />
+        </div>
       </nav>
     </div>
   );

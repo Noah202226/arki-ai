@@ -9,13 +9,10 @@ import {
   Loader2,
   Trash2,
   RotateCcw,
-  Tag,
   ArrowUpRight,
   ArrowDownLeft,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 
 export function TransactionHistory() {
   const { results: transactions, status, loadMore } = usePaginatedQuery(
@@ -26,6 +23,17 @@ export function TransactionHistory() {
   const categories = useQuery(api.categories.getCategories, {});
   const removeTransaction = useMutation(api.financials.softDeleteTransaction);
 
+  // Only show transactions from the last 3 days on the initial visible set
+  const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
+  const recentTransactions = transactions?.filter(
+    (tx) => tx.dueDate >= threeDaysAgo
+  );
+  // If we have fetched enough that recent slice < 50, show all fetched
+  const displayTransactions =
+    recentTransactions && recentTransactions.length < 50
+      ? transactions
+      : recentTransactions ?? transactions;
+
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -34,7 +42,7 @@ export function TransactionHistory() {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          loadMore(20);
+          loadMore(30);
         }
       },
       { threshold: 0.1 }
@@ -55,7 +63,7 @@ export function TransactionHistory() {
   if (transactions === undefined || categories === undefined)
     return (
       <div className="flex justify-center items-center p-20">
-        <Loader2 className="animate-spin text-indigo-600 w-10 h-10" />
+        <Loader2 className="animate-spin text-[#ff6b35] w-10 h-10" />
       </div>
     );
 
@@ -78,7 +86,7 @@ export function TransactionHistory() {
       minimumFractionDigits: 2,
     }).format(amount);
 
-  const groupedTransactions = transactions.reduce(
+  const groupedTransactions = (displayTransactions ?? []).reduce(
     (groups, tx) => {
       const date = format(tx.dueDate, "MMMM dd, yyyy");
       if (!groups[date]) groups[date] = [];
@@ -96,7 +104,7 @@ export function TransactionHistory() {
   };
 
   return (
-    <div className="w-full space-y-10 max-h-[85vh] overflow-y-auto px-1 md:px-4 custom-scrollbar">
+    <div className="w-full divide-y divide-slate-100">
       {Object.entries(groupedTransactions).map(([date, groupTx]) => {
         const dailyIncome = groupTx
           .filter(
@@ -117,35 +125,33 @@ export function TransactionHistory() {
           .reduce((sum, t) => sum + t.amount, 0);
 
         return (
-          <div key={date} className="space-y-5">
-            {/* ENHANCED STICKY HEADER */}
-            <div className="sticky top-0 z-20 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-md py-3 px-2 flex items-end justify-between border-b-2 border-slate-200 dark:border-slate-800">
-              <div>
-                <h3 className="text-xs md:text-sm font-black uppercase tracking-[0.25em] text-indigo-600 dark:text-indigo-400">
+          <div key={date}>
+            {/* DATE GROUP HEADER */}
+            <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm flex items-center justify-between px-4 py-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#ff6b35]">
                   {getGroupLabel(date)}
-                </h3>
-                <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-tighter">
-                  {groupTx.length}{" "}
-                  {groupTx.length === 1 ? "Transaction" : "Transactions"}
-                </p>
+                </span>
+                <span className="text-[10px] font-semibold text-slate-400">
+                  · {groupTx.length} {groupTx.length === 1 ? "txn" : "txns"}
+                </span>
               </div>
-
-              <div className="flex flex-col items-end gap-0.5">
+              <div className="flex items-center gap-2">
                 {dailyIncome > 0 && (
-                  <span className="text-xs md:text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                    +{formatPHP(dailyIncome)}
+                  <span className="text-[11px] font-bold text-emerald-600 font-mono">
+                    +₱{dailyIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>
                 )}
                 {dailyExpense > 0 && (
-                  <span className="text-xs md:text-sm font-black text-rose-600 dark:text-rose-400 font-mono">
-                    -{formatPHP(dailyExpense)}
+                  <span className="text-[11px] font-bold text-rose-500 font-mono">
+                    -₱{dailyExpense.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>
                 )}
               </div>
             </div>
 
-            {/* TRANSACTIONS LIST */}
-            <div className="grid gap-4">
+            {/* TRANSACTION ROWS */}
+            <div className="divide-y divide-slate-50">
               {groupTx.map((tx) => {
                 const isReversal = tx.type === "reversal";
                 const isDeleted = !!tx.isDeleted;
@@ -153,133 +159,91 @@ export function TransactionHistory() {
                 const categoryMatch = categories.find(
                   (c) => c.name.toLowerCase() === tx.category?.toLowerCase(),
                 );
-                const catColor = categoryMatch?.color || "#64748b";
+                const catColor = categoryMatch?.color || "#94a3b8";
 
                 return (
                   <div
                     key={tx._id}
                     className={cn(
-                      "group relative flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 md:p-6 rounded-3xl border-2 transition-all duration-300",
-                      "hover:shadow-xl hover:scale-[1.01] cursor-pointer active:scale-95",
+                      "group flex items-center gap-3 px-4 py-3 transition-colors duration-150",
                       isDeleted
-                        ? "bg-slate-50/50 opacity-50 grayscale border-slate-100"
-                        : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800",
-                      isReversal && "border-indigo-100 bg-indigo-50/20",
+                        ? "opacity-40 grayscale"
+                        : "hover:bg-slate-50/70",
                     )}
                   >
-                    {/* LEFT SECTION: ICON & TITLE */}
-                    <div className="flex items-center gap-5 w-full sm:w-auto">
-                      <div
-                        className={cn(
-                          "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
-                          isIncome
-                            ? "bg-emerald-50 text-emerald-600"
-                            : "bg-rose-50 text-rose-600",
-                          isDeleted &&
-                            "bg-slate-200 text-slate-400 shadow-none",
-                        )}
-                        style={
-                          !isDeleted && categoryMatch
-                            ? {
-                                backgroundColor: `${catColor}15`,
-                                color: catColor,
-                              }
-                            : {}
-                        }
-                      >
-                        {isIncome ? (
-                          <ArrowDownLeft className="w-7 h-7" />
-                        ) : (
-                          <ArrowUpRight className="w-7 h-7" />
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <h4
-                            className={cn(
-                              "text-base md:text-lg font-black text-slate-900 dark:text-white leading-tight truncate",
-                              isDeleted && "line-through text-slate-400",
-                            )}
-                          >
-                            {tx.title}
-                          </h4>
-                          {isReversal && (
-                            <Badge className="bg-indigo-600 text-white border-none text-[10px] font-black px-2 py-0.5 uppercase">
-                              REVERSAL
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">
-                            {format(tx.dueDate, "hh:mm a")}
-                          </span>
-                          <span
-                            className="md:hidden text-[10px] font-black uppercase px-2 py-0.5 rounded-md border"
-                            style={{
-                              color: catColor,
-                              borderColor: `${catColor}30`,
-                            }}
-                          >
-                            {tx.category}
-                          </span>
-                        </div>
-                      </div>
+                    {/* ICON */}
+                    <div
+                      className={cn(
+                        "w-8 h-8 rounded-xl flex items-center justify-center shrink-0",
+                      )}
+                      style={{
+                        backgroundColor: isDeleted ? "#f1f5f9" : `${catColor}18`,
+                        color: isDeleted ? "#94a3b8" : catColor,
+                      }}
+                    >
+                      {isIncome
+                        ? <ArrowDownLeft className="w-4 h-4" />
+                        : <ArrowUpRight className="w-4 h-4" />
+                      }
                     </div>
 
-                    {/* MIDDLE SECTION: DESKTOP CATEGORY */}
-                    <div className="hidden md:flex items-center justify-center px-6">
-                      <div
-                        className="flex items-center gap-2 px-4 py-1.5 rounded-xl text-xs font-black border-2 uppercase tracking-widest transition-colors"
-                        style={{
-                          borderColor: `${catColor}25`,
-                          color: catColor,
-                          backgroundColor: `${catColor}08`,
-                        }}
-                      >
-                        <Tag className="w-3.5 h-3.5" />
-                        {categoryMatch?.name || tx.category || "General"}
-                      </div>
-                    </div>
-
-                    {/* RIGHT SECTION: AMOUNT & DELETE */}
-                    <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto mt-4 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-none border-slate-100 dark:border-slate-800">
-                      <div className="text-left sm:text-right">
+                    {/* TITLE + META */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
                         <p
                           className={cn(
-                            "font-mono font-black text-xl md:text-2xl tracking-tighter",
-                            isIncome
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : "text-rose-600 dark:text-rose-400",
-                            isDeleted && "text-slate-300",
+                            "text-sm font-semibold text-slate-800 truncate leading-tight",
+                            isDeleted && "line-through text-slate-400",
                           )}
                         >
-                          {isIncome ? "+" : "-"}₱
-                          {tx.amount.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                          })}
+                          {tx.title}
                         </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {!isDeleted && !isReversal ? (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(tx._id);
-                            }}
-                            className="h-11 w-11 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all border border-slate-100 dark:border-slate-800"
-                          >
-                            <Trash2 className="h-5 h-5" />
-                          </Button>
-                        ) : (
-                          <div className="h-11 w-11 flex items-center justify-center">
-                            <RotateCcw className="h-5 w-5 text-slate-300" />
-                          </div>
+                        {isReversal && (
+                          <span className="shrink-0 text-[9px] font-black uppercase tracking-wider text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded">
+                            REV
+                          </span>
                         )}
                       </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {format(tx.dueDate, "hh:mm a")}
+                        </span>
+                        <span
+                          className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border shrink-0"
+                          style={{
+                            color: catColor,
+                            borderColor: `${catColor}30`,
+                            backgroundColor: `${catColor}08`,
+                          }}
+                        >
+                          {categoryMatch?.name || tx.category || "General"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* AMOUNT */}
+                    <p
+                      className={cn(
+                        "font-mono font-bold text-sm tabular-nums shrink-0",
+                        isIncome ? "text-emerald-600" : "text-rose-500",
+                        isDeleted && "text-slate-300",
+                      )}
+                    >
+                      {isIncome ? "+" : "-"}₱{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </p>
+
+                    {/* DELETE */}
+                    <div className="shrink-0 w-7">
+                      {!isDeleted && !isReversal ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(tx._id); }}
+                          className="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      ) : isReversal ? (
+                        <RotateCcw className="w-3.5 h-3.5 text-slate-300" />
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -304,7 +268,10 @@ export function TransactionHistory() {
       {transactions.length === 0 && status !== "LoadingFirstPage" && (
         <div className="py-32 text-center border-4 border-dashed rounded-[40px] border-slate-100 dark:border-slate-900">
           <p className="text-slate-400 text-lg font-bold">
-            Your ledger is currently empty.
+            No transactions yet.
+          </p>
+          <p className="text-slate-300 text-sm mt-2">
+            Showing last 3 days · scroll for older entries
           </p>
         </div>
       )}

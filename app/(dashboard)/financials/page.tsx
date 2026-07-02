@@ -142,20 +142,22 @@ export default function FinancialsPage() {
         {/* RIGHT COLUMN */}
         <div
           className={cn(
-            "bg-white p-4 sm:p-6 border-t lg:border-t-0 border-[#e0dbd4]",
-            activeTab !== "all" && activeTab !== "transactions" && "hidden lg:block"
+            "bg-white border-t lg:border-t-0 border-[#e0dbd4] sticky top-0 h-screen flex flex-col",
+            activeTab !== "all" && activeTab !== "transactions" && "hidden lg:flex"
           )}
         >
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between px-4 sm:px-6 pt-5 pb-4 border-b border-[#e0dbd4] shrink-0">
             <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
               <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
               Transaction History
             </h2>
             <span className="text-[10px] font-bold tracking-[0.08em] bg-[#f5f2ed] border border-[#e0dbd4] text-[#888] px-3 py-1 rounded-md">
-              PAST 30 DAYS
+              LAST 3 DAYS / TOP 50
             </span>
           </div>
-          <TransactionHistory />
+          <div className="flex-1 overflow-y-auto">
+            <TransactionHistory />
+          </div>
         </div>
       </div>
     </div>

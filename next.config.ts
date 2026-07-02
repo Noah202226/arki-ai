@@ -15,4 +15,5 @@ module.exports = withPWA({
   experimental: {
     turbopack: {},
   },
+  devIndicators: false,
 });

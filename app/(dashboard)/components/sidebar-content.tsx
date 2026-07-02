@@ -7,11 +7,10 @@ import {
   Receipt,
   CreditCard,
   Wallet,
-  LogOut,
-  Settings, // Idagdag ang icon na ito
+  Settings,
 } from "lucide-react";
-import { UserButton, useUser, useClerk } from "@clerk/nextjs"; // Idagdag ang useClerk
 import { cn } from "@/lib/utils";
+import { UserNavButton } from "./user-nav-button";
 
 interface SidebarContentProps {
   onSelect?: () => void;
@@ -19,22 +18,14 @@ interface SidebarContentProps {
 
 export function SidebarContent({ onSelect }: SidebarContentProps) {
   const pathname = usePathname();
-  const { user } = useUser();
-  const { signOut } = useClerk(); // 1. Kunin ang signOut function mula sa useClerk
 
   const menuItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
     { icon: Receipt, label: "Financials", href: "/financials" },
     { icon: CreditCard, label: "Credits", href: "/credits" },
     { icon: Wallet, label: "Accounts", href: "/accounts" },
-    { name: "Settings", href: "/settings", icon: Settings },
+    { icon: Settings, label: "Settings", href: "/settings" },
   ];
-
-  // 2. I-update ang logout handler
-  const handleLogout = async () => {
-    if (onSelect) onSelect(); // Isara ang mobile nav
-    await signOut({ redirectUrl: "/" }); // Tawagin ang Clerk logout
-  };
 
   return (
     <div className="flex flex-col h-full bg-card">
@@ -81,36 +72,8 @@ export function SidebarContent({ onSelect }: SidebarContentProps) {
         })}
       </nav>
 
-      <div className="p-4 border-t bg-slate-50/50 space-y-2">
-        {/* 3. OPTIONAL: Idagdag itong Logout Button kung gusto mo ng manual button */}
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-colors group"
-        >
-          <LogOut className="w-5 h-5 text-red-600" />
-          Logout
-        </button>
-
-        <div className="flex items-center justify-between px-2 py-2 rounded-xl bg-white border shadow-sm">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <UserButton
-              afterSwitchSessionUrl="/" // ✅ Siguraduhin na may redirect pagkatapos mag-logout
-              appearance={{
-                elements: {
-                  userButtonAvatarBox: "w-9 h-9",
-                },
-              }}
-            />
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-semibold truncate">
-                {user?.firstName || "User"}
-              </span>
-              <span className="text-[10px] text-muted-foreground truncate">
-                {user?.primaryEmailAddress?.emailAddress}
-              </span>
-            </div>
-          </div>
-        </div>
+      <div className="p-4 border-t bg-slate-50/50">
+        <UserNavButton onAction={onSelect} side="right" />
       </div>
     </div>
   );
