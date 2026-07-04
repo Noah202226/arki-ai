@@ -124,4 +124,18 @@ export default defineSchema({
     categoryId: v.id("categories"),
     order: v.optional(v.number()), // for sorting
   }).index("by_userId", ["userId"]),
+
+  // 4. NEW: SUBSCRIPTIONS TABLE (For tracking recurring subscriptions/expenses)
+  subscriptions: defineTable({
+    userId: v.string(),
+    name: v.string(),
+    amount: v.number(),
+    frequency: v.union(v.literal("monthly"), v.literal("yearly"), v.literal("weekly")),
+    nextBillingDate: v.number(), // Unix timestamp (millisecond representation) of next payment
+    accountId: v.id("accounts"), // Account from which this subscription is paid
+    categoryId: v.id("categories"), // Category, e.g. "Software", "Utilities"
+    status: v.string(), // "active", "paused", "cancelled"
+    description: v.optional(v.string()), // Notes/details
+    isDeleted: v.optional(v.boolean()), // Soft delete support
+  }).index("by_userId", ["userId"]),
 });

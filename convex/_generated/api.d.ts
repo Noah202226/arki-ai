@@ -14,6 +14,7 @@ import type * as credits from "../credits.js";
 import type * as financials from "../financials.js";
 import type * as payroll from "../payroll.js";
 import type * as quickChips from "../quickChips.js";
+import type * as subscriptions from "../subscriptions.js";
 import type * as tasks from "../tasks.js";
 
 import type {
@@ -29,6 +30,7 @@ declare const fullApi: ApiFromModules<{
   financials: typeof financials;
   payroll: typeof payroll;
   quickChips: typeof quickChips;
+  subscriptions: typeof subscriptions;
   tasks: typeof tasks;
 }>;
 

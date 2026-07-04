@@ -7,11 +7,12 @@ import { AddTransactionDialog } from "@/app/(dashboard)/financials/components/Ad
 import { TransactionHistory } from "@/app/(dashboard)/financials/components/TransactionHistory";
 import { CreditTracker } from "@/app/(dashboard)/financials/components/CreditTracker";
 import { PayrollTracker } from "@/app/(dashboard)/financials/components/payroll-tracker";
+import { SubscriptionTracker } from "@/app/(dashboard)/financials/components/SubscriptionTracker";
 import { Button } from "@/components/ui/button";
-import { FileText, Wallet, Calendar, ShieldAlert, History } from "lucide-react";
+import { FileText, Wallet, Calendar, ShieldAlert, History, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type TabId = "all" | "wallets" | "payroll" | "credits" | "transactions";
+type TabId = "all" | "wallets" | "payroll" | "credits" | "subscriptions" | "transactions";
 
 export default function FinancialsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("all");
@@ -21,6 +22,7 @@ export default function FinancialsPage() {
     { id: "wallets", label: "Wallets", icon: Wallet },
     { id: "payroll", label: "Expected Income", icon: Calendar },
     { id: "credits", label: "Credits", icon: ShieldAlert },
+    { id: "subscriptions", label: "Subscriptions", icon: CreditCard },
     { id: "transactions", label: "History", icon: History },
   ] as const;
 
@@ -136,6 +138,22 @@ export default function FinancialsPage() {
               </h2>
             </div>
             <CreditTracker />
+          </section>
+
+          {/* Section 4: Subscriptions */}
+          <section
+            className={cn(
+              "p-4 sm:p-6",
+              activeTab !== "all" && activeTab !== "subscriptions" && "hidden lg:block"
+            )}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
+                <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
+                Subscription Monitoring
+              </h2>
+            </div>
+            <SubscriptionTracker />
           </section>
         </div>
 
