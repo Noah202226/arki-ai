@@ -22,8 +22,8 @@ export function TaskRow({ task, onToggle, onDelete, isRoutine }: TaskRowProps) {
         "relative group flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all duration-150",
         "hover:shadow-sm hover:-translate-y-[1px]",
         task.isCompleted
-          ? "bg-[#f5f2ed] border-[#e8e4de] opacity-60"
-          : "bg-white border-[#e8e4de]",
+          ? "bg-[#f5f2ed] dark:bg-slate-900/60 border-[#e8e4de] dark:border-slate-800 opacity-60"
+          : "bg-white dark:bg-slate-900 border-[#e8e4de] dark:border-slate-800",
       )}
     >
       <div
@@ -38,15 +38,15 @@ export function TaskRow({ task, onToggle, onDelete, isRoutine }: TaskRowProps) {
         {task.isCompleted ? (
           <CheckCircle2 className="w-6 h-6" style={{ color: accentColor }} />
         ) : (
-          <Circle className="w-6 h-6 text-[#1a1a2e]/15 group-hover:text-[#1a1a2e]/40 transition-colors" />
+          <Circle className="w-6 h-6 text-[#1a1a2e]/15 dark:text-slate-600 group-hover:text-[#1a1a2e]/40 dark:group-hover:text-slate-400 transition-colors" />
         )}
       </button>
 
       <div className="flex-1 min-w-0">
         <p
           className={cn(
-            "text-sm font-bold text-[#1a1a2e] leading-tight truncate",
-            task.isCompleted && "line-through text-[#1a1a2e]/40",
+            "text-sm font-bold text-[#1a1a2e] dark:text-slate-100 leading-tight truncate",
+            task.isCompleted && "line-through text-[#1a1a2e]/40 dark:text-slate-500",
           )}
         >
           {task.text}
@@ -60,7 +60,7 @@ export function TaskRow({ task, onToggle, onDelete, isRoutine }: TaskRowProps) {
               <Repeat className="w-2.5 h-2.5" /> DAILY
             </span>
           )}
-          <span className="flex items-center gap-1 text-[10px] font-medium text-[#1a1a2e]/30">
+          <span className="flex items-center gap-1 text-[10px] font-medium text-[#1a1a2e]/30 dark:text-slate-500">
             <Clock className="w-3 h-3" /> 09:00 AM
           </span>
         </div>
@@ -70,7 +70,7 @@ export function TaskRow({ task, onToggle, onDelete, isRoutine }: TaskRowProps) {
         variant="ghost"
         size="icon"
         onClick={() => onDelete({ id: task._id })}
-        className="h-7 w-7 text-[#1a1a2e]/20 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
+        className="h-7 w-7 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-rose-400 hover:bg-red-50 dark:hover:bg-rose-950/40 rounded-lg transition-all flex-shrink-0"
       >
         <Trash2 className="w-3.5 h-3.5" />
       </Button>

@@ -81,7 +81,7 @@ export function AddSubscriptionDialog() {
         <Button
           variant="ghost"
           size="sm"
-          className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 font-bold"
+          className="text-orange-600 dark:text-orange-500 hover:text-orange-700 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/40 font-bold"
         >
           <Plus className="w-4 h-4 mr-1" /> Add Subscription
         </Button>

@@ -72,7 +72,7 @@ export function RoutineManager() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#f5f2ed]">
+    <div className="min-h-screen bg-[#f5f2ed] dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200">
       {/* Header — no action buttons */}
       <header className="bg-[#1a1a2e] flex flex-col">
         <div className="px-4 sm:px-8 py-6 sm:py-7">
@@ -104,7 +104,7 @@ export function RoutineManager() {
       </header>
 
       {/* Body */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x divide-[#e0dbd4]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x divide-[#e0dbd4] dark:divide-slate-800">
         <ObjectivesList
           tasks={soloTasks}
           completedCount={completedTasks}

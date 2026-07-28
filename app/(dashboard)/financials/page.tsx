@@ -27,7 +27,7 @@ export default function FinancialsPage() {
   ] as const;
 
   return (
-    <div className="min-h-screen bg-[#f5f2ed]">
+    <div className="min-h-screen bg-[#f5f2ed] dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200">
       {/* 1. HEADER — bold two-panel navy block */}
       <header className="bg-[#1a1a2e] flex flex-col">
         <div className="flex flex-col sm:flex-row sm:items-stretch">
@@ -48,7 +48,7 @@ export default function FinancialsPage() {
           <div className="flex sm:flex-col justify-start sm:justify-center gap-2.5 px-4 sm:px-6 py-4 sm:py-5 bg-[#13132a]">
             <Button
               variant="outline"
-              className="bg-white/[0.06] border-white/10 text-white/60 hover:bg-white/10 hover:text-white/80 rounded-lg text-xs font-semibold"
+              className="bg-white/[0.06] border-white/10 text-white/80 hover:bg-white/10 hover:text-white rounded-lg text-xs font-semibold"
             >
               <FileText className="w-3.5 h-3.5 mr-2" /> Export Reports
             </Button>
@@ -61,7 +61,7 @@ export default function FinancialsPage() {
       </header>
 
       {/* 2. MOBILE ONLY TAB BAR */}
-      <div className="lg:hidden sticky top-0 bg-[#f5f2ed]/90 backdrop-blur-md border-b border-[#e0dbd4] px-4 py-2.5 z-40 overflow-x-auto flex gap-2 scrollbar-none">
+      <div className="lg:hidden sticky top-0 bg-[#f5f2ed]/90 dark:bg-slate-950/90 backdrop-blur-md border-b border-[#e0dbd4] dark:border-slate-800 px-4 py-2.5 z-40 overflow-x-auto flex gap-2 scrollbar-none">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -73,7 +73,7 @@ export default function FinancialsPage() {
                 "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 border",
                 isActive
                   ? "bg-[#ff6b35] text-white border-transparent shadow-sm"
-                  : "bg-white text-slate-600 border-[#e0dbd4] hover:bg-slate-50"
+                  : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-[#e0dbd4] dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
               )}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -84,11 +84,11 @@ export default function FinancialsPage() {
       </div>
 
       {/* 3. MAIN BODY — tabs on mobile, side-by-side grids on lg+ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x divide-[#e0dbd4]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x divide-[#e0dbd4] dark:divide-slate-800">
         {/* LEFT COLUMN */}
         <div
           className={cn(
-            "bg-[#f5f2ed] flex flex-col divide-y divide-[#e0dbd4]",
+            "bg-[#f5f2ed] dark:bg-slate-950 flex flex-col divide-y divide-[#e0dbd4] dark:divide-slate-800",
             activeTab !== "all" && "divide-y-0"
           )}
         >
@@ -100,7 +100,7 @@ export default function FinancialsPage() {
             )}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
+              <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e] dark:text-slate-100">
                 <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
                 Accounts &amp; Wallets
               </h2>
@@ -116,7 +116,7 @@ export default function FinancialsPage() {
             )}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
+              <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e] dark:text-slate-100">
                 <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
                 Expected Income
               </h2>
@@ -132,7 +132,7 @@ export default function FinancialsPage() {
             )}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
+              <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e] dark:text-slate-100">
                 <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
                 Credit Tracker
               </h2>
@@ -148,7 +148,7 @@ export default function FinancialsPage() {
             )}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
+              <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e] dark:text-slate-100">
                 <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
                 Subscription Monitoring
               </h2>
@@ -160,16 +160,16 @@ export default function FinancialsPage() {
         {/* RIGHT COLUMN */}
         <div
           className={cn(
-            "bg-white border-t lg:border-t-0 border-[#e0dbd4] sticky top-0 h-screen flex flex-col",
+            "bg-white dark:bg-slate-900 border-t lg:border-t-0 border-[#e0dbd4] dark:border-slate-800 sticky top-0 h-screen flex flex-col",
             activeTab !== "all" && activeTab !== "transactions" && "hidden lg:flex"
           )}
         >
-          <div className="flex items-center justify-between px-4 sm:px-6 pt-5 pb-4 border-b border-[#e0dbd4] shrink-0">
-            <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
+          <div className="flex items-center justify-between px-4 sm:px-6 pt-5 pb-4 border-b border-[#e0dbd4] dark:border-slate-800 shrink-0">
+            <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e] dark:text-slate-100">
               <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
               Transaction History
             </h2>
-            <span className="text-[10px] font-bold tracking-[0.08em] bg-[#f5f2ed] border border-[#e0dbd4] text-[#888] px-3 py-1 rounded-md">
+            <span className="text-[10px] font-bold tracking-[0.08em] bg-[#f5f2ed] dark:bg-slate-800 border border-[#e0dbd4] dark:border-slate-700 text-[#888] dark:text-slate-400 px-3 py-1 rounded-md">
               LAST 3 DAYS / TOP 50
             </span>
           </div>

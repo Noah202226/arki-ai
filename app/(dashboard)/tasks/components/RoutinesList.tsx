@@ -16,12 +16,12 @@ export function RoutinesList({
   onDelete,
 }: RoutinesListProps) {
   return (
-    <div className="bg-white p-4 sm:p-6 mb-20 sm:mb-0">
+    <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 mb-20 sm:mb-0">
       <div className="flex items-center justify-between mb-5">
-        <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]">
+        <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e] dark:text-slate-100">
           <span className="w-[3px] h-[14px] rounded-sm bg-[#34d399]" />
           System Routines
-          <span className="text-[10px] bg-[#1a1a2e]/[0.07] text-[#1a1a2e]/50 px-2 py-0.5 rounded-full font-bold">
+          <span className="text-[10px] bg-[#1a1a2e]/[0.07] dark:bg-slate-800 text-[#1a1a2e]/50 dark:text-slate-400 px-2 py-0.5 rounded-full font-bold">
             {routines.length}
           </span>
         </h2>

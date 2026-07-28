@@ -104,7 +104,7 @@ export function TransactionHistory() {
   };
 
   return (
-    <div className="w-full divide-y divide-slate-100">
+    <div className="w-full divide-y divide-slate-100 dark:divide-slate-800">
       {Object.entries(groupedTransactions).map(([date, groupTx]) => {
         const dailyIncome = groupTx
           .filter(
@@ -127,23 +127,23 @@ export function TransactionHistory() {
         return (
           <div key={date}>
             {/* DATE GROUP HEADER */}
-            <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm flex items-center justify-between px-4 py-2 border-b border-slate-100">
+            <div className="sticky top-0 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#ff6b35]">
                   {getGroupLabel(date)}
                 </span>
-                <span className="text-[10px] font-semibold text-slate-400">
+                <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
                   · {groupTx.length} {groupTx.length === 1 ? "txn" : "txns"}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 {dailyIncome > 0 && (
-                  <span className="text-[11px] font-bold text-emerald-600 font-mono">
+                  <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
                     +₱{dailyIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>
                 )}
                 {dailyExpense > 0 && (
-                  <span className="text-[11px] font-bold text-rose-500 font-mono">
+                  <span className="text-[11px] font-bold text-rose-500 dark:text-rose-400 font-mono">
                     -₱{dailyExpense.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>
                 )}
@@ -151,7 +151,7 @@ export function TransactionHistory() {
             </div>
 
             {/* TRANSACTION ROWS */}
-            <div className="divide-y divide-slate-50">
+            <div className="divide-y divide-slate-50 dark:divide-slate-800/50">
               {groupTx.map((tx) => {
                 const isReversal = tx.type === "reversal";
                 const isDeleted = !!tx.isDeleted;
@@ -168,7 +168,7 @@ export function TransactionHistory() {
                       "group flex items-center gap-3 px-4 py-3 transition-colors duration-150",
                       isDeleted
                         ? "opacity-40 grayscale"
-                        : "hover:bg-slate-50/70",
+                        : "hover:bg-slate-50/70 dark:hover:bg-slate-800/50",
                     )}
                   >
                     {/* ICON */}
@@ -192,8 +192,8 @@ export function TransactionHistory() {
                       <div className="flex items-center gap-1.5 min-w-0">
                         <p
                           className={cn(
-                            "text-sm font-semibold text-slate-800 truncate leading-tight",
-                            isDeleted && "line-through text-slate-400",
+                            "text-sm font-semibold text-slate-800 dark:text-slate-100 truncate leading-tight",
+                            isDeleted && "line-through text-slate-400 dark:text-slate-500",
                           )}
                         >
                           {tx.title}

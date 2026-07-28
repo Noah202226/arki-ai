@@ -204,11 +204,11 @@ export function AccountList() {
     <div className="space-y-6">
       {/* ── OVERVIEW STATS GRID ── */}
       {/* Mobile: horizontal scroll | sm: grid */}
-      <div className="flex overflow-x-auto gap-4 snap-x pb-4 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-px sm:bg-[#e0dbd4] sm:rounded-2xl sm:overflow-hidden sm:border border-[#e0dbd4]/40 scrollbar-none">
+      <div className="flex overflow-x-auto gap-4 snap-x pb-4 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-px sm:bg-[#e0dbd4] dark:sm:bg-slate-800 sm:rounded-2xl sm:overflow-hidden sm:border border-[#e0dbd4]/40 dark:border-slate-800/80 scrollbar-none">
         {overviewStats.map((stat) => (
           <div
             key={stat.label}
-            className="relative bg-[#f5f2ed] border border-[#e0dbd4]/40 sm:border-0 rounded-2xl sm:rounded-none shrink-0 w-[240px] sm:w-auto snap-center px-5 py-5 flex flex-col gap-4 group"
+            className="relative bg-[#f5f2ed] dark:bg-slate-900 border border-[#e0dbd4]/40 dark:border-slate-800 sm:border-0 rounded-2xl sm:rounded-none shrink-0 w-[240px] sm:w-auto snap-center px-5 py-5 flex flex-col gap-4 group"
           >
             {/* Left accent bar */}
             <div
@@ -238,16 +238,16 @@ export function AccountList() {
 
             {/* Label + Value */}
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.09em] text-[#1a1a2e]/40 mb-2 leading-tight">
+              <p className="text-[11px] font-bold uppercase tracking-[0.09em] text-[#1a1a2e]/40 dark:text-slate-400 mb-2 leading-tight">
                 {stat.label}
               </p>
               <p
-                className="font-mono font-black tracking-tight leading-none text-[#1a1a2e] break-all"
+                className="font-mono font-black tracking-tight leading-none text-[#1a1a2e] dark:text-slate-100 break-all"
                 style={{ fontSize: "clamp(18px, 3.5vw, 22px)" }}
               >
                 {formatPHP(stat.value)}
               </p>
-              <p className="text-xs text-[#1a1a2e]/30 mt-1.5 italic">
+              <p className="text-xs text-[#1a1a2e]/30 dark:text-slate-500 mt-1.5 italic">
                 {stat.sub}
               </p>
             </div>
@@ -277,10 +277,10 @@ export function AccountList() {
               key={account._id}
               onClick={() => setSelectedAccount(account)}
               className={cn(
-                "group relative bg-white border border-[#e8e4de] rounded-2xl overflow-hidden cursor-pointer shrink-0 w-[280px] sm:w-auto snap-center",
+                "group relative bg-white dark:bg-slate-900 border border-[#e8e4de] dark:border-slate-800 rounded-2xl overflow-hidden cursor-pointer shrink-0 w-[280px] sm:w-auto snap-center",
                 "hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 active:scale-[0.98]",
                 selectedAccount?._id === account._id &&
-                  "ring-2 ring-[#ff6b35] ring-offset-2",
+                  "ring-2 ring-[#ff6b35] ring-offset-2 dark:ring-offset-slate-950",
               )}
             >
               {/* Top accent bar */}
@@ -301,14 +301,14 @@ export function AccountList() {
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <p className="text-[11px] font-bold text-[#1a1a2e]/40 uppercase tracking-tight truncate">
+                        <p className="text-[11px] font-bold text-[#1a1a2e]/40 dark:text-slate-400 uppercase tracking-tight truncate">
                           {account.accountName}
                         </p>
                         {account.isSavings && (
                           <ShieldCheck className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
                         )}
                       </div>
-                      <p className="text-xl font-black font-mono tracking-tight text-[#1a1a2e] leading-tight">
+                      <p className="text-xl font-black font-mono tracking-tight text-[#1a1a2e] dark:text-slate-100 leading-tight">
                         ₱
                         {account.balance.toLocaleString(undefined, {
                           minimumFractionDigits: 2,
@@ -327,7 +327,7 @@ export function AccountList() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-[#1a1a2e]/25 hover:text-[#1a1a2e] hover:bg-[#1a1a2e]/[0.06] rounded-lg"
+                          className="h-8 w-8 text-[#1a1a2e]/25 dark:text-slate-400 hover:text-[#1a1a2e] dark:hover:text-slate-100 hover:bg-[#1a1a2e]/[0.06] dark:hover:bg-slate-800 rounded-lg"
                         >
                           <MoreVertical className="w-4 h-4" />
                         </Button>

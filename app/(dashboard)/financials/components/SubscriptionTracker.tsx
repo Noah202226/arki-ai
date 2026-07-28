@@ -88,11 +88,11 @@ export function SubscriptionTracker() {
       {/* 1. Header with Add Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-0.5">
-          <h3 className="text-xl font-bold tracking-tight flex items-center gap-2">
+          <h3 className="text-xl font-bold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
             <CreditCard className="w-5 h-5 text-orange-500" />
             Recurring Expenses
           </h3>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+          <p className="text-[10px] text-muted-foreground dark:text-slate-400 uppercase tracking-wider font-semibold">
             Track and log your active subscription plans.
           </p>
         </div>
@@ -101,7 +101,7 @@ export function SubscriptionTracker() {
 
       {/* 2. Mini Summary Cards */}
       <div className="grid grid-cols-2 gap-4">
-        <Card className="bg-[#1a1a2e] text-white border-none shadow-md overflow-hidden">
+        <Card className="bg-[#1a1a2e] dark:bg-slate-900 text-white border-none dark:border dark:border-slate-800 shadow-md overflow-hidden">
           <CardContent className="p-4 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-slate-400 text-[9px] uppercase tracking-wider font-bold">
@@ -117,7 +117,7 @@ export function SubscriptionTracker() {
           </CardContent>
         </Card>
 
-        <Card className="bg-[#1a1a2e] text-white border-none shadow-md overflow-hidden">
+        <Card className="bg-[#1a1a2e] dark:bg-slate-900 text-white border-none dark:border dark:border-slate-800 shadow-md overflow-hidden">
           <CardContent className="p-4 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-slate-400 text-[9px] uppercase tracking-wider font-bold">
@@ -136,10 +136,10 @@ export function SubscriptionTracker() {
 
       {/* 3. Subscriptions List */}
       {summary.items.length === 0 ? (
-        <div className="text-center py-10 bg-white border border-[#e5dec9]/40 rounded-2xl p-6">
-          <Sparkles className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-          <h4 className="font-bold text-slate-700 text-sm">No Subscriptions Added</h4>
-          <p className="text-[11px] text-slate-400 mt-1 max-w-[250px] mx-auto">
+        <div className="text-center py-10 bg-white dark:bg-slate-900 border border-[#e5dec9]/40 dark:border-slate-800 rounded-2xl p-6">
+          <Sparkles className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+          <h4 className="font-bold text-slate-700 dark:text-slate-200 text-sm">No Subscriptions Added</h4>
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 max-w-[250px] mx-auto">
             Log your software, services or utilities here to start monitoring recurring charges.
           </p>
         </div>
@@ -151,10 +151,10 @@ export function SubscriptionTracker() {
               <div
                 key={sub._id}
                 className={cn(
-                  "bg-white border rounded-2xl p-4 transition-all duration-200 shadow-sm relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-300",
-                  sub.isOverdue && "border-rose-200 bg-rose-50/20 hover:border-rose-300",
-                  sub.isDueSoon && "border-amber-200 bg-amber-50/10 hover:border-amber-300",
-                  sub.status !== "active" && "opacity-75 bg-slate-50/50"
+                  "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 transition-all duration-200 shadow-sm relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-300 dark:hover:border-slate-700",
+                  sub.isOverdue && "border-rose-200 bg-rose-50/20 dark:border-rose-900/40 dark:bg-rose-950/20 hover:border-rose-300 dark:hover:border-rose-800",
+                  sub.isDueSoon && "border-amber-200 bg-amber-50/10 dark:border-amber-900/40 dark:bg-amber-950/20 hover:border-amber-300 dark:hover:border-amber-800",
+                  sub.status !== "active" && "opacity-75 bg-slate-50/50 dark:bg-slate-900/50"
                 )}
               >
                 {/* Visual Category Stripe */}
@@ -172,7 +172,7 @@ export function SubscriptionTracker() {
                   </div>
                   <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <h4 className="font-extrabold text-sm text-slate-800 truncate leading-none">
+                      <h4 className="font-extrabold text-sm text-slate-800 dark:text-slate-100 truncate leading-none">
                         {sub.name}
                       </h4>
                       {sub.isOverdue && (
@@ -191,25 +191,25 @@ export function SubscriptionTracker() {
                         </Badge>
                       )}
                       {sub.status === "cancelled" && (
-                        <Badge variant="outline" className="text-slate-400 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md">
+                        <Badge variant="outline" className="text-slate-400 dark:text-slate-500 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md">
                           Cancelled
                         </Badge>
                       )}
                     </div>
                     {sub.description && (
-                      <p className="text-[11px] text-slate-400 truncate">{sub.description}</p>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{sub.description}</p>
                     )}
-                    <div className="flex items-center gap-2 text-[10px] text-slate-500 flex-wrap">
-                      <span className="font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
+                    <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 flex-wrap">
+                      <span className="font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
                         {sub.categoryName}
                       </span>
                       <span>•</span>
-                      <span className="font-medium bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded">
+                      <span className="font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded">
                         {sub.accountName}
                       </span>
                       <span>•</span>
                       <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-slate-400" />
+                        <Calendar className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                         Next: {format(new Date(sub.nextBillingDate), "MMM dd, yyyy")}
                       </span>
                     </div>
@@ -218,10 +218,10 @@ export function SubscriptionTracker() {
 
                 <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
                   <div className="text-right shrink-0">
-                    <p className="text-xs text-slate-400 font-bold leading-none">Amount</p>
-                    <p className="text-base font-black font-mono text-slate-800">
+                    <p className="text-xs text-slate-400 dark:text-slate-500 font-bold leading-none">Amount</p>
+                    <p className="text-base font-black font-mono text-slate-800 dark:text-slate-100">
                       ₱{sub.amount.toLocaleString()}
-                      <span className="text-[10px] text-slate-400 font-bold font-sans">
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold font-sans">
                         /{formatFrequency(sub.frequency)}
                       </span>
                     </p>
@@ -233,9 +233,9 @@ export function SubscriptionTracker() {
                       onClick={() => handlePay(sub._id)}
                       disabled={isPaying}
                       className={cn(
-                        "h-8 rounded-xl font-bold text-xs bg-slate-900 hover:bg-slate-800 text-white shrink-0 shadow-sm",
-                        sub.isOverdue && "bg-rose-600 hover:bg-rose-700",
-                        sub.isDueSoon && "bg-amber-600 hover:bg-amber-700"
+                        "h-8 rounded-xl font-bold text-xs bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 shrink-0 shadow-sm",
+                        sub.isOverdue && "bg-rose-600 hover:bg-rose-700 text-white dark:bg-rose-600 dark:hover:bg-rose-700 dark:text-white",
+                        sub.isDueSoon && "bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-600 dark:hover:bg-amber-700 dark:text-white"
                       )}
                     >
                       {isPaying ? (
@@ -248,7 +248,7 @@ export function SubscriptionTracker() {
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-700 rounded-lg">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg">
                         <MoreVertical className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -258,7 +258,7 @@ export function SubscriptionTracker() {
                           setSelectedSub(sub);
                           setIsEditOpen(true);
                         }}
-                        className="flex items-center gap-2 text-xs font-bold text-slate-600 py-2.5 rounded-lg cursor-pointer"
+                        className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 py-2.5 rounded-lg cursor-pointer"
                       >
                         <Edit2 className="w-3.5 h-3.5 text-indigo-500" /> Edit Details
                       </DropdownMenuItem>
