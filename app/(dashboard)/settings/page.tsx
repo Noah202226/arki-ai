@@ -11,7 +11,7 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<"appearance" | "categories" | "chips">("appearance");
 
   return (
-    <div className="space-y-8 pb-10 max-w-4xl mx-auto px-4 sm:px-6">
+    <div className="space-y-8 pb-10 w-full max-w-9xl mx-auto px-4 sm:px-8 py-6 sm:py-8">
       <div className="border-b border-[#e5dec9]/40 dark:border-slate-800 pb-6">
         <h1 className="text-4xl font-extrabold tracking-tight text-[#1a1a2e] dark:text-slate-50">Settings</h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1">

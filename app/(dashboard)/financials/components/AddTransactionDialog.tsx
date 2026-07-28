@@ -70,12 +70,28 @@ export function AddTransactionDialog() {
   useEffect(() => {
     if (isOpen) {
       setTitle(initialData.title || "");
-      setCategoryId("");
       setType("expense");
       setDate(new Date());
-      setAmount("");
+      setAmount(initialData.amount ? String(initialData.amount) : "");
+
+      // Auto-select "Debt Payment" or "Credit Payment" category when paying a credit loan
+      if (initialData.creditId && categories) {
+        const debtCategory = categories.find(
+          (c) =>
+            c.name.toLowerCase().includes("debt") ||
+            c.name.toLowerCase().includes("credit") ||
+            c.name.toLowerCase().includes("loan")
+        );
+        if (debtCategory) {
+          setCategoryId(debtCategory._id);
+        } else {
+          setCategoryId("");
+        }
+      } else {
+        setCategoryId("");
+      }
     }
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, categories]);
 
   /** Apply a quick-add preset from user database */
   const applyPreset = (preset: { label: string; categoryId: string; type: string }) => {
@@ -126,27 +142,29 @@ export function AddTransactionDialog() {
         </Button>
       </div>
 
-      <DialogContent className="sm:max-w-106.25 rounded-t-3xl sm:rounded-3xl border-none shadow-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl font-black italic uppercase tracking-tighter">
-            <ReceiptText className="w-5 h-5 text-indigo-500" />
+      <DialogContent className="sm:max-w-xl rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl p-6">
+        <DialogHeader className="pb-1 border-b border-slate-100 dark:border-slate-800/80">
+          <DialogTitle className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
+            <div className="p-2 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400">
+              <ReceiptText className="w-5 h-5" />
+            </div>
             {initialData.creditId ? "Debt Repayment" : "New Transaction"}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5 pt-2">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           {!initialData.creditId && (
             <Tabs value={type} onValueChange={setType} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-slate-100 p-1 rounded-xl">
+              <TabsList className="grid w-full grid-cols-2 bg-slate-100 dark:bg-slate-800/70 p-1.5 rounded-2xl border border-slate-200/50 dark:border-slate-700/50">
                 <TabsTrigger
                   value="expense"
-                  className="rounded-lg py-2 data-[state=active]:bg-rose-500 data-[state=active]:text-white font-bold transition-all"
+                  className="rounded-xl py-2.5 text-xs font-bold transition-all duration-200 data-[state=active]:bg-rose-500 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
                 >
-                  Expenses
+                  Expense
                 </TabsTrigger>
                 <TabsTrigger
                   value="income"
-                  className="rounded-lg py-2 data-[state=active]:bg-emerald-500 data-[state=active]:text-white font-bold transition-all"
+                  className="rounded-xl py-2.5 text-xs font-bold transition-all duration-200 data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
                 >
                   Income
                 </TabsTrigger>
@@ -154,81 +172,96 @@ export function AddTransactionDialog() {
             </Tabs>
           )}
 
-          {/* ── QUICK ADD STRIP (CUSTOM CHIPS FROM DATABASE) ───────────────── */}
+          {/* ── QUICK ADD STRIP (GROUPED BY CATEGORIES) ───────────────── */}
           {visiblePresets.length > 0 && (
-            <div className="space-y-2">
+            <div className="space-y-2.5 bg-slate-50/70 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-200/60 dark:border-slate-800">
               <div className="flex items-center gap-1.5">
-                <Zap className="w-3 h-3 text-[#ff6b35]" />
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                  Quick Add
+                <Zap className="w-3.5 h-3.5 text-[#ff6b35] dark:text-[#ff8555]" />
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-400">
+                  Quick Add Chips
                 </span>
               </div>
 
-              <div className="flex gap-1.5 flex-wrap">
-                {visiblePresets.map((preset) => {
-                  const isActive =
-                    title === preset.label && categoryId === preset.categoryId;
+              <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                {Array.from(
+                  new Set(visiblePresets.map((p) => p.categoryId))
+                ).map((catId) => {
+                  const categoryObj = categories?.find((c) => c._id === catId);
+                  const categoryName = categoryObj?.name || "General";
+                  const groupChips = visiblePresets.filter((p) => p.categoryId === catId);
 
                   return (
-                    <button
-                      key={preset._id}
-                      type="button"
-                      onClick={() => applyPreset(preset)}
-                      className={cn(
-                        "flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all duration-150 active:scale-95",
-                        isActive
-                          ? "bg-[#ff6b35] text-white border-[#ff6b35] shadow-sm shadow-[#ff6b35]/30"
-                          : "bg-slate-50 text-slate-600 border-slate-100 hover:border-[#ff6b35]/40 hover:bg-[#ff6b35]/5 hover:text-[#ff6b35]",
-                      )}
-                    >
-                      <span>{preset.emoji}</span>
-                      {preset.label}
-                    </button>
+                    <div key={catId} className="space-y-1">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 block px-0.5">
+                        {categoryName}
+                      </span>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {groupChips.map((preset) => {
+                          const isActive =
+                            title === preset.label && categoryId === preset.categoryId;
+
+                          return (
+                            <button
+                              key={preset._id}
+                              type="button"
+                              onClick={() => applyPreset(preset)}
+                              className={cn(
+                                "flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border transition-all duration-150 active:scale-95",
+                                isActive
+                                  ? "bg-[#ff6b35] text-white border-[#ff6b35] shadow-sm shadow-[#ff6b35]/30"
+                                  : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200/80 dark:border-slate-700/60 hover:border-[#ff6b35]/40 hover:bg-[#ff6b35]/10 hover:text-[#ff6b35]"
+                              )}
+                            >
+                              <span>{preset.emoji}</span>
+                              {preset.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
             </div>
           )}
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] uppercase font-bold text-slate-400 px-1">
+          <div className="space-y-3.5">
+            <div className="space-y-1.5">
+              <Label className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-400 px-1">
                 Description
               </Label>
               <Input
                 placeholder="e.g. Salary, Coffee"
-                className="bg-slate-50 border-none h-12 px-4 font-medium focus-visible:ring-indigo-500"
+                className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 h-11 px-4 font-medium rounded-xl focus-visible:ring-2 focus-visible:ring-[#ff6b35]"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
               />
             </div>
 
-            <div className="flex justify-between items-center">
-              <Label className="text-xs font-bold px-1">Category</Label>
-              <Link
-                href="/settings"
-                className="text-[10px] uppercase font-black text-indigo-500 hover:underline"
-              >
-                + Manage
-              </Link>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-[10px] uppercase font-bold text-slate-400 px-1">
-                Category
-              </Label>
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center px-1">
+                <Label className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-400">
+                  Category
+                </Label>
+                <Link
+                  href="/settings"
+                  className="text-[10px] uppercase font-black text-[#ff6b35] dark:text-[#ff8555] hover:underline"
+                >
+                  + Manage
+                </Link>
+              </div>
               <Select value={categoryId} onValueChange={setCategoryId} required>
-                <SelectTrigger className="bg-slate-50 border-none h-12 focus:ring-indigo-500">
+                <SelectTrigger className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 h-11 rounded-xl focus:ring-2 focus:ring-[#ff6b35]">
                   <SelectValue placeholder="Select Category" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-none shadow-xl">
+                <SelectContent className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xl">
                   {categories
                     ?.filter((c) => c.type === type)
                     .map((cat) => (
                       <SelectItem key={cat._id} value={cat._id}>
                         <div className="flex items-center gap-2">
-                          <Tag className="w-3 h-3 text-slate-400" />
+                          <Tag className="w-3.5 h-3.5 text-slate-400 dark:text-slate-400" />
                           {cat.name}
                         </div>
                       </SelectItem>
@@ -237,19 +270,19 @@ export function AddTransactionDialog() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-[10px] uppercase font-bold text-slate-400 px-1">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-400 px-1">
                   Amount
                 </Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-3.5 text-xs font-bold text-slate-400">
+                  <span className="absolute left-3 top-3 text-xs font-bold text-slate-400 dark:text-slate-400">
                     ₱
                   </span>
                   <Input
                     type="number"
                     step="0.01"
-                    className="pl-7 bg-slate-50 border-none h-12 font-mono font-bold focus-visible:ring-indigo-500"
+                    className="pl-7 bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 h-11 rounded-xl font-mono font-bold focus-visible:ring-2 focus-visible:ring-[#ff6b35]"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     required
@@ -257,19 +290,19 @@ export function AddTransactionDialog() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-[10px] uppercase font-bold text-slate-400 px-1">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-400 px-1">
                   Wallet
                 </Label>
                 <Select onValueChange={setAccountId} required>
-                  <SelectTrigger className="bg-slate-50 border-none h-12 focus:ring-indigo-500">
+                  <SelectTrigger className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 h-11 rounded-xl focus:ring-2 focus:ring-[#ff6b35]">
                     <SelectValue placeholder="Source" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border-none shadow-xl">
+                  <SelectContent className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xl">
                     {accounts?.map((acc) => (
                       <SelectItem key={acc._id} value={acc._id}>
                         <div className="flex items-center gap-2">
-                          <Wallet className="w-3 h-3 text-slate-400" />
+                          <Wallet className="w-3.5 h-3.5 text-slate-400 dark:text-slate-400" />
                           {acc.accountName}
                         </div>
                       </SelectItem>
@@ -279,8 +312,8 @@ export function AddTransactionDialog() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-[10px] uppercase font-bold text-slate-400 px-1 block">
+            <div className="space-y-1.5">
+              <Label className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-400 px-1 block">
                 Date
               </Label>
               <Popover>
@@ -288,16 +321,16 @@ export function AddTransactionDialog() {
                   <Button
                     variant={"outline"}
                     className={cn(
-                      "w-full justify-start text-left font-medium h-12 border-slate-100 rounded-xl",
+                      "w-full justify-start text-left font-medium h-11 bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800",
                       !date && "text-muted-foreground",
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4 text-indigo-500" />
+                    <CalendarIcon className="mr-2 h-4 w-4 text-[#ff6b35] dark:text-[#ff8555]" />
                     {date ? format(date, "PPP") : <span>Select Date</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-auto p-0 rounded-2xl shadow-2xl border-none"
+                  className="w-auto p-0 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
                   align="center"
                 >
                   <Calendar
@@ -313,20 +346,18 @@ export function AddTransactionDialog() {
 
           <Button
             type="submit"
-            className="w-full h-14 rounded-2xl bg-slate-900 text-white font-bold text-lg"
             disabled={isSubmitting}
+            className="w-full bg-[#ff6b35] hover:bg-[#e05a2b] text-white font-extrabold h-12 rounded-xl shadow-lg shadow-[#ff6b35]/25 transition-all mt-2 active:scale-[0.99]"
           >
             {isSubmitting ? (
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : initialData.creditId ? (
+              "Confirm Repayment"
+            ) : type === "income" ? (
+              "Confirm Deposit"
             ) : (
-              <Plus className="w-5 h-5 mr-2" />
+              "Confirm Expense"
             )}
-            Confirm{" "}
-            {initialData.creditId
-              ? "Repayment"
-              : type === "income"
-                ? "Deposit"
-                : "Payment"}
           </Button>
         </form>
       </DialogContent>

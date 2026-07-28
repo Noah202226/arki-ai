@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useMutation, useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { format, isToday, isYesterday } from "date-fns";
@@ -11,8 +11,18 @@ import {
   RotateCcw,
   ArrowUpRight,
   ArrowDownLeft,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export function TransactionHistory() {
   const { results: transactions, status, loadMore } = usePaginatedQuery(
@@ -22,6 +32,9 @@ export function TransactionHistory() {
   );
   const categories = useQuery(api.categories.getCategories, {});
   const removeTransaction = useMutation(api.financials.softDeleteTransaction);
+
+  const [txToDelete, setTxToDelete] = useState<{ id: any; title: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Only show transactions from the last 3 days on the initial visible set
   const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
@@ -67,15 +80,17 @@ export function TransactionHistory() {
       </div>
     );
 
-  const handleDelete = async (id: any) => {
-    const ok = confirm("Are you sure? This will revert the account balance.");
-    if (ok) {
-      try {
-        await removeTransaction({ id });
-        toast.success("Transaction voided.");
-      } catch (error) {
-        toast.error("Failed to delete.");
-      }
+  const confirmDelete = async () => {
+    if (!txToDelete) return;
+    setIsDeleting(true);
+    try {
+      await removeTransaction({ id: txToDelete.id });
+      toast.success("Transaction voided.");
+      setTxToDelete(null);
+    } catch (error) {
+      toast.error("Failed to delete transaction.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -236,13 +251,17 @@ export function TransactionHistory() {
                     <div className="shrink-0 w-7">
                       {!isDeleted && !isReversal ? (
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(tx._id); }}
-                          className="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTxToDelete({ id: tx._id, title: tx.title });
+                          }}
+                          className="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
+                          title="Void / Delete Transaction"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       ) : isReversal ? (
-                        <RotateCcw className="w-3.5 h-3.5 text-slate-300" />
+                        <RotateCcw className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600" />
                       ) : null}
                     </div>
                   </div>
@@ -275,6 +294,42 @@ export function TransactionHistory() {
           </p>
         </div>
       )}
+
+      {/* SHADCN DELETE CONFIRMATION DIALOG MODAL */}
+      <Dialog open={!!txToDelete} onOpenChange={(open) => !open && setTxToDelete(null)}>
+        <DialogContent className="sm:max-w-md rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl p-6">
+          <DialogHeader className="space-y-2">
+            <div className="w-10 h-10 rounded-full bg-rose-500/10 dark:bg-rose-500/20 flex items-center justify-center text-rose-600 dark:text-rose-400">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <DialogTitle className="text-lg font-extrabold text-slate-900 dark:text-slate-50">
+              Void Transaction?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Are you sure you want to void <strong className="text-slate-700 dark:text-slate-200">&quot;{txToDelete?.title}&quot;</strong>? This action will revert the corresponding account balance.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              variant="outline"
+              onClick={() => setTxToDelete(null)}
+              disabled={isDeleting}
+              className="rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold shadow-md shadow-rose-600/20 gap-2"
+            >
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              {isDeleting ? "Voiding..." : "Void Transaction"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 
 export const addCredit = mutation({
   args: {
@@ -9,13 +10,15 @@ export const addCredit = mutation({
     monthlyInstallment: v.number(),
     dueDate: v.number(),
     category: v.optional(v.string()),
+    depositAccountId: v.optional(v.union(v.id("accounts"), v.string(), v.null())),
+    depositAmount: v.optional(v.union(v.number(), v.null())),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthenticated");
 
-    // I-insert ang bagong credit record
-    return await ctx.db.insert("credits", {
+    // 1. Insert the new credit record
+    const creditId = await ctx.db.insert("credits", {
       userId: identity.subject,
       creditorName: args.creditorName,
       totalAmount: args.totalAmount,
@@ -25,8 +28,58 @@ export const addCredit = mutation({
       category: args.category ?? "General",
       startDate: Date.now(),
       status: "ongoing", // Default status
-      totalPaid: 0, // Mahalaga ito para sa initial calculation ng progress
+      totalPaid: 0, // Initial calculation of progress
     });
+
+    // 2. If user specified a deposit account and amount, record an Income transaction & update account balance
+    if (args.depositAccountId && args.depositAmount && args.depositAmount > 0) {
+      const targetAccountId = args.depositAccountId as Id<"accounts">;
+      const accountDoc = await ctx.db.get(targetAccountId);
+      const account = accountDoc as { balance: number } | null;
+
+      // Fetch all categories
+      const categories = await ctx.db.query("categories").collect();
+
+      // Find specific "Credentials" category for loan proceeds
+      const credentialsCategory =
+        categories.find((c) => c.name.toLowerCase() === "credentials") ||
+        categories.find(
+          (c) =>
+            c.type === "income" &&
+            (c.name.toLowerCase().includes("loan") ||
+              c.name.toLowerCase().includes("credit") ||
+              c.name.toLowerCase().includes("disbursement"))
+        ) ||
+        categories.find((c) => c.type === "income") ||
+        categories[0];
+
+      const categoryName = credentialsCategory ? credentialsCategory.name : "Credentials";
+      const categoryId = credentialsCategory?._id;
+
+      // Insert transaction into financials table
+      await ctx.db.insert("financials", {
+        userId: identity.subject,
+        title: `Loan - ${args.creditorName}`,
+        amount: args.depositAmount,
+        type: "income",
+        category: categoryName,
+        categoryId: categoryId,
+        accountId: targetAccountId,
+        status: "completed",
+        frequency: "one-time",
+        dueDate: Date.now(),
+        isDeleted: false,
+      });
+
+      // Update account balance
+      if (account && typeof account.balance === "number") {
+        await ctx.db.patch(targetAccountId, {
+          balance: account.balance + args.depositAmount,
+        });
+      }
+    }
+
+    return creditId;
   },
 });
 
@@ -94,15 +147,23 @@ export const getCreditSummary = query({
       // 2. Kalkulahin ang Next Due Date
       let nextDueDate = new Date(currentYear, currentMonth, actualDueDay);
 
-      if (isPaidThisMonth) {
-        // Kung bayad na ngayong buwan, ang next due date ay sa susunod na buwan na.
+      // 💡 Kung ang credit ay bagong gawa ngayong kasalukuyang buwan (o bayad na ngayong buwan),
+      // ang unang hulog/due date ay magsisimula sa susunod na buwan (next month).
+      const creditCreatedMonth = new Date(credit.startDate).getMonth();
+      const creditCreatedYear = new Date(credit.startDate).getFullYear();
+      const isNewCreditThisMonth =
+        creditCreatedMonth === currentMonth && creditCreatedYear === currentYear;
+
+      if (isPaidThisMonth || isNewCreditThisMonth) {
+        // Ang next due date ay sa susunod na buwan na
         nextDueDate.setMonth(nextDueDate.getMonth() + 1);
       }
 
       //  I-calculate ang isOverdue base sa logic na:
-      // Hindi pa bayad ngayong buwan AT lumipas na ang due day.
+      // Hindi pa bayad ngayong buwan AT hindi bagong credit ngayong buwan AT lumipas na ang due day.
       const isOverdue =
         !isPaidThisMonth &&
+        !isNewCreditThisMonth &&
         todayAtMidnight >
           new Date(currentYear, currentMonth, actualDueDay).getTime();
 

@@ -58,21 +58,21 @@ export function CategorySettings() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-8">
+    <div className="w-full space-y-8">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1a1a2e] flex items-center gap-2">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1a1a2e] dark:text-slate-50 flex items-center gap-2">
           <PieChart className="text-[#ff6b35] w-7 h-7 sm:w-8 sm:h-8" />
           Category Manager
         </h1>
-        <p className="text-slate-500 text-sm">
+        <p className="text-slate-500 dark:text-slate-400 text-sm">
           Organize your transaction labels for better budget and credit tracking.
         </p>
       </header>
 
       {/* --- ADD NEW CATEGORY CARD --- */}
-      <Card className="border border-[#e5dec9]/40 shadow-sm bg-white rounded-2xl overflow-hidden">
-        <CardHeader className="bg-slate-50/50 border-b border-[#e5dec9]/30 py-4 px-6">
-          <CardTitle className="text-xs uppercase tracking-widest font-black text-slate-400">
+      <Card className="border border-[#e5dec9]/40 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
+        <CardHeader className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-[#e5dec9]/30 dark:border-slate-800 py-4 px-6">
+          <CardTitle className="text-xs uppercase tracking-widest font-black text-slate-400 dark:text-slate-400">
             Create Custom Category
           </CardTitle>
         </CardHeader>
@@ -80,22 +80,22 @@ export function CategorySettings() {
           <form onSubmit={handleAddCategory} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <Label className="text-xs font-bold text-slate-600">Category Name</Label>
+                <Label className="text-xs font-bold text-slate-600 dark:text-slate-300">Category Name</Label>
                 <Input
                   placeholder="e.g. Groceries, Gym, Rent"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="bg-slate-50/50 border-[#e5dec9]/50 h-11 focus-visible:ring-[#ff6b35]/25 rounded-xl font-medium"
+                  className="bg-slate-50/50 dark:bg-slate-800/50 border-[#e5dec9]/50 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 h-11 focus-visible:ring-[#ff6b35]/25 rounded-xl font-medium"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-bold text-slate-600">Type</Label>
+                <Label className="text-xs font-bold text-slate-600 dark:text-slate-300">Type</Label>
                 <Select value={type} onValueChange={setType}>
-                  <SelectTrigger className="bg-slate-50/50 border-[#e5dec9]/50 h-11 focus:ring-[#ff6b35]/25 rounded-xl font-medium">
+                  <SelectTrigger className="bg-slate-50/50 dark:bg-slate-800/50 border-[#e5dec9]/50 dark:border-slate-700 text-slate-900 dark:text-slate-100 h-11 focus:ring-[#ff6b35]/25 rounded-xl font-medium">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
                     <SelectItem value="expense">Expense</SelectItem>
                     <SelectItem value="income">Income</SelectItem>
                   </SelectContent>
@@ -115,7 +115,7 @@ export function CategorySettings() {
 
             {/* Presets Color Picker */}
             <div className="space-y-3">
-              <Label className="text-xs font-bold text-slate-600">Choose Badge Color</Label>
+              <Label className="text-xs font-bold text-slate-600 dark:text-slate-300">Choose Badge Color</Label>
               <div className="flex flex-wrap gap-2.5">
                 {COLOR_PRESETS.map((preset) => {
                   const isSelected = color === preset.value;
@@ -127,7 +127,7 @@ export function CategorySettings() {
                       className={cn(
                         "w-7 h-7 rounded-full transition-all duration-200 border-2 flex items-center justify-center relative",
                         isSelected
-                          ? "border-slate-800 scale-110 shadow-sm"
+                          ? "border-slate-800 dark:border-white scale-110 shadow-sm"
                           : "border-transparent hover:scale-105"
                       )}
                       style={{ backgroundColor: preset.value }}
@@ -149,7 +149,7 @@ export function CategorySettings() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {["expense", "income"].map((t) => (
           <div key={t} className="space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-400 flex items-center gap-2">
               <span
                 className={cn(
                   "w-2 h-2 rounded-full",
@@ -161,12 +161,12 @@ export function CategorySettings() {
 
             <div className="space-y-2">
               {categories === undefined ? (
-                <div className="h-20 flex items-center justify-center bg-slate-50 rounded-2xl border border-[#e5dec9]/20">
-                  <span className="text-xs text-slate-400">Loading...</span>
+                <div className="h-20 flex items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-2xl border border-[#e5dec9]/20 dark:border-slate-800">
+                  <span className="text-xs text-slate-400 dark:text-slate-500">Loading...</span>
                 </div>
               ) : categories.filter((c) => c.type === t).length === 0 ? (
-                <div className="h-20 flex items-center justify-center bg-slate-50 rounded-2xl border border-dashed border-[#e5dec9]/50">
-                  <span className="text-xs text-slate-400">No {t} categories defined.</span>
+                <div className="h-20 flex items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-2xl border border-dashed border-[#e5dec9]/50 dark:border-slate-800">
+                  <span className="text-xs text-slate-400 dark:text-slate-500">No {t} categories defined.</span>
                 </div>
               ) : (
                 categories
@@ -174,7 +174,7 @@ export function CategorySettings() {
                   .map((cat) => (
                     <div
                       key={cat._id}
-                      className="flex items-center justify-between p-3.5 bg-white rounded-2xl shadow-sm border border-[#e5dec9]/30 group hover:border-[#ff6b35]/25 transition-all duration-200"
+                      className="flex items-center justify-between p-3.5 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-[#e5dec9]/30 dark:border-slate-800 group hover:border-[#ff6b35]/25 dark:hover:border-[#ff6b35]/40 transition-all duration-200"
                     >
                       <div className="flex items-center gap-3">
                         <div
@@ -186,7 +186,7 @@ export function CategorySettings() {
                         >
                           <Tag className="w-4 h-4" />
                         </div>
-                        <span className="font-bold text-sm text-slate-700">
+                        <span className="font-bold text-sm text-slate-700 dark:text-slate-200">
                           {cat.name}
                         </span>
                       </div>
@@ -194,7 +194,7 @@ export function CategorySettings() {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDeleteCategory(cat._id)}
-                        className="md:opacity-0 md:group-hover:opacity-100 text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-all rounded-xl w-8 h-8"
+                        className="md:opacity-0 md:group-hover:opacity-100 text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 transition-all rounded-xl w-8 h-8"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
