@@ -388,11 +388,11 @@ export function AccountList() {
         onOpenChange={(open) => !open && setSelectedAccount(null)}
       >
         {/* w-full on mobile, capped at md on larger screens */}
-        <SheetContent className="w-full sm:max-w-lg p-0 flex flex-col h-full border-l border-[#e0dbd4] shadow-2xl bg-[#f5f2ed]">
+        <SheetContent className="w-full sm:max-w-lg p-0 flex flex-col h-full border-l border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
           {selectedAccount && (
             <>
               {/* Navy header */}
-              <div className="bg-[#1a1a2e] px-6 sm:px-8 pt-8 pb-7 shrink-0">
+              <div className="bg-slate-900 dark:bg-slate-900 px-6 sm:px-8 pt-8 pb-7 shrink-0">
                 <SheetHeader className="text-left space-y-0">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="relative flex h-2 w-2">
@@ -445,12 +445,12 @@ export function AccountList() {
 
               {/* Scrollable transaction history */}
               <div className="flex-1 overflow-y-auto mt-6 px-4 sm:px-6 pb-10">
-                <div className="flex items-center gap-3 mb-5 sticky top-0 bg-[#f5f2ed]/95 backdrop-blur-sm py-2 z-30">
-                  <h4 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-[#1a1a2e]/40 whitespace-nowrap">
+                <div className="flex items-center gap-3 mb-5 sticky top-0 bg-white/95 dark:bg-slate-950/95 backdrop-blur-sm py-2 z-30">
+                  <h4 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 whitespace-nowrap">
                     <span className="w-[3px] h-[12px] rounded-sm bg-[#ff6b35]" />
                     Transaction History
                   </h4>
-                  <div className="h-px flex-1 bg-[#e0dbd4]" />
+                  <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
                 </div>
                 <AccountFlow accountId={selectedAccount._id} />
               </div>
