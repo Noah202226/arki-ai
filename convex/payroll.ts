@@ -137,6 +137,12 @@ export const getCutOffStats = query({
 
     const activeCutOff = settings?.currentCutOff || "Unclaimed";
 
+    // Fetch all user jobs
+    const jobs = await ctx.db
+      .query("jobs")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .collect();
+
     // Fetch all user logs
     const allLogs = await ctx.db
       .query("workLogs")
@@ -169,7 +175,81 @@ export const getCutOffStats = query({
       stats,
       nextStats,
       activeCutOff,
+      jobs,
     };
+  },
+});
+
+// Job Profile Management
+export const getJobs = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    return await ctx.db
+      .query("jobs")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .collect();
+  },
+});
+
+export const createJob = mutation({
+  args: {
+    title: v.string(),
+    baseDailyRate: v.number(),
+    otHourlyRate: v.number(),
+    lateRatePerMin: v.optional(v.number()),
+    color: v.optional(v.string()),
+    isDefault: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    return await ctx.db.insert("jobs", {
+      userId: identity.subject,
+      ...args,
+    });
+  },
+});
+
+export const updateJob = mutation({
+  args: {
+    id: v.id("jobs"),
+    title: v.string(),
+    baseDailyRate: v.number(),
+    otHourlyRate: v.number(),
+    lateRatePerMin: v.optional(v.number()),
+    color: v.optional(v.string()),
+    isDefault: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    const existing = await ctx.db.get(args.id);
+    if (!existing || existing.userId !== identity.subject) {
+      throw new Error("Unauthorized");
+    }
+
+    const { id, ...data } = args;
+    await ctx.db.patch(id, data);
+  },
+});
+
+export const deleteJob = mutation({
+  args: { id: v.id("jobs") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    const existing = await ctx.db.get(args.id);
+    if (!existing || existing.userId !== identity.subject) {
+      throw new Error("Unauthorized");
+    }
+
+    await ctx.db.delete(args.id);
   },
 });
 
@@ -183,6 +263,8 @@ export const addWorkDay = mutation({
     otHours: v.number(),
     otHourlyRate: v.number(),
     lateMinutes: v.optional(v.number()),
+    jobId: v.optional(v.id("jobs")),
+    jobTitle: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -208,6 +290,8 @@ export const updateWorkDay = mutation({
     baseDailyRate: v.number(),
     otHourlyRate: v.number(),
     lateMinutes: v.optional(v.number()),
+    jobId: v.optional(v.id("jobs")),
+    jobTitle: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();

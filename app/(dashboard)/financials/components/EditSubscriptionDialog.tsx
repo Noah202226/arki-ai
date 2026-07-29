@@ -42,7 +42,9 @@ export function EditSubscriptionDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const updateSubscription = useMutation(api.subscriptions.updateSubscription);
   const accounts = useQuery(api.accounts.getAccounts);
-  const categories = useQuery(api.categories.getCategories, { type: "expense" });
+
+  const [type, setType] = useState<"expense" | "income">("expense");
+  const categories = useQuery(api.categories.getCategories, { type });
 
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
@@ -62,6 +64,7 @@ export function EditSubscriptionDialog({
       setAccountId(subscription.accountId || "");
       setCategoryId(subscription.categoryId || "");
       setStatus(subscription.status || "active");
+      setType(subscription.type || "expense");
       setDescription(subscription.description || "");
     }
   }, [subscription, isOpen]);
@@ -84,6 +87,7 @@ export function EditSubscriptionDialog({
         accountId: accountId as Id<"accounts">,
         categoryId: categoryId as Id<"categories">,
         status,
+        type,
         description: description || undefined,
       });
       toast.success(`"${name}" updated successfully.`);
@@ -109,15 +113,48 @@ export function EditSubscriptionDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-3">
+          {/* Type Selector */}
+          <div className="space-y-1.5">
+            <Label className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 px-1">
+              Entry Type
+            </Label>
+            <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-800/60 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => { setType("expense"); setCategoryId(""); }}
+                className={cn(
+                  "py-2 rounded-lg text-xs font-bold transition-all",
+                  type === "expense"
+                    ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-800"
+                )}
+              >
+                💳 Expense Outflow
+              </button>
+              <button
+                type="button"
+                onClick={() => { setType("income"); setCategoryId(""); }}
+                className={cn(
+                  "py-2 rounded-lg text-xs font-bold transition-all",
+                  type === "income"
+                    ? "bg-emerald-500 text-white shadow-sm"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-800"
+                )}
+              >
+                💰 Client Retainer (Income)
+              </button>
+            </div>
+          </div>
+
           {/* Name */}
           <div className="space-y-1.5">
             <Label className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 px-1">
-              Subscription Name
+              {type === "income" ? "Client / Retainer Name" : "Subscription Name"}
             </Label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Netflix, Spotify, AWS"
+              placeholder={type === "income" ? "e.g. Client X Monthly Retainer" : "e.g. Netflix, Spotify, AWS"}
               className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 text-slate-900 dark:text-slate-100 h-11 px-4 font-medium rounded-xl focus-visible:ring-2 focus-visible:ring-[#ff6b35]"
               required
               disabled={isSubmitting}

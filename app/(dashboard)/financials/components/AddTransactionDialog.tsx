@@ -132,14 +132,29 @@ export function AddTransactionDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <div className="fixed bottom-20 sm:bottom-6 right-6 z-999 md:bottom-10 md:right-10">
+      {/* Floating Action Button (FAB) */}
+      <div className="fixed bottom-20 sm:bottom-8 right-5 md:bottom-8 md:right-8 z-[999] group">
+        {/* Animated Glow Aura */}
+        <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-[#ff6b35] via-amber-500 to-orange-600 opacity-70 blur-md group-hover:opacity-100 group-hover:blur-lg transition-all duration-500 animate-pulse group-hover:animate-none" />
+
         <Button
           onClick={() => onOpen()}
-          size="icon"
-          className="h-14 w-14 rounded-full bg-slate-900 shadow-2xl hover:scale-110 transition-transform active:scale-95 text-white ring-4 ring-white dark:ring-slate-950"
+          className="relative flex items-center gap-2.5 h-13 sm:h-14 px-4 sm:px-5 rounded-full bg-gradient-to-r from-[#ff6b35] via-orange-500 to-amber-500 hover:from-orange-600 hover:to-[#ff6b35] text-white font-bold shadow-[0_10px_25px_rgba(255,107,53,0.45)] border border-white/20 transition-all duration-300 group-hover:scale-105 active:scale-95 group-hover:shadow-[0_15px_35px_rgba(255,107,53,0.65)] group-hover:cursor-pointer"
         >
-          <Plus className="h-7 w-7" />
-          <span className="sr-only">Add Transaction</span>
+          {/* Animated Icon Container */}
+          <div className="relative flex items-center justify-center w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm transition-transform duration-300 group-hover:rotate-90 group-hover:bg-white/30">
+            <Plus className="w-5 h-5 text-white stroke-[2.5]" />
+          </div>
+
+          {/* Label with micro-typography */}
+          <span className="text-xs sm:text-sm font-extrabold tracking-wide drop-shadow-sm whitespace-nowrap">
+            Add Transaction
+          </span>
+
+          {/* Shimmer Effect overlay */}
+          <span className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
+            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+          </span>
         </Button>
       </div>
 

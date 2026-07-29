@@ -33,7 +33,9 @@ export function AddSubscriptionDialog() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const createSubscription = useMutation(api.subscriptions.createSubscription);
   const accounts = useQuery(api.accounts.getAccounts);
-  const categories = useQuery(api.categories.getCategories, { type: "expense" });
+
+  const [type, setType] = useState<"expense" | "income">("expense");
+  const categories = useQuery(api.categories.getCategories, { type });
 
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
@@ -59,12 +61,13 @@ export function AddSubscriptionDialog() {
         nextBillingDate: nextBillingDate.getTime(),
         accountId: accountId as Id<"accounts">,
         categoryId: categoryId as Id<"categories">,
+        type,
         description: description || undefined,
       });
-      toast.success(`"${name}" subscription added!`);
+      toast.success(`"${name}" ${type === "income" ? "client retainer" : "subscription"} added!`);
       setOpen(false);
       setName(""); setAmount(""); setFrequency("monthly");
-      setNextBillingDate(new Date()); setAccountId(""); setCategoryId(""); setDescription("");
+      setNextBillingDate(new Date()); setAccountId(""); setCategoryId(""); setDescription(""); setType("expense");
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : "Failed to create subscription.";
       toast.error(errorMsg);
@@ -96,15 +99,48 @@ export function AddSubscriptionDialog() {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-3">
+          {/* Type Selector */}
+          <div className="space-y-1.5">
+            <Label className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 px-1">
+              Entry Type
+            </Label>
+            <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-800/60 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => { setType("expense"); setCategoryId(""); }}
+                className={cn(
+                  "py-2 rounded-lg text-xs font-bold transition-all",
+                  type === "expense"
+                    ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-800"
+                )}
+              >
+                💳 Expense Outflow
+              </button>
+              <button
+                type="button"
+                onClick={() => { setType("income"); setCategoryId(""); }}
+                className={cn(
+                  "py-2 rounded-lg text-xs font-bold transition-all",
+                  type === "income"
+                    ? "bg-emerald-500 text-white shadow-sm"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-800"
+                )}
+              >
+                💰 Client Retainer (Income)
+              </button>
+            </div>
+          </div>
+
           {/* Name */}
           <div className="space-y-1.5">
             <Label className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 px-1">
-              Subscription Name
+              {type === "income" ? "Client / Retainer Name" : "Subscription Name"}
             </Label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Netflix, Spotify, AWS"
+              placeholder={type === "income" ? "e.g. Client X Monthly Retainer" : "e.g. Netflix, Spotify, AWS"}
               className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 text-slate-900 dark:text-slate-100 h-11 px-4 font-medium rounded-xl focus-visible:ring-2 focus-visible:ring-[#ff6b35]"
               required
               disabled={isSubmitting}

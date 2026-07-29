@@ -14,7 +14,7 @@ function calculateNextBillingDate(current: number, frequency: "weekly" | "monthl
   return date.getTime();
 }
 
-// --- CREATE: Add a New Subscription ---
+// --- CREATE: Add a New Subscription or Client Retainer ---
 export const createSubscription = mutation({
   args: {
     name: v.string(),
@@ -23,6 +23,7 @@ export const createSubscription = mutation({
     nextBillingDate: v.number(),
     accountId: v.id("accounts"),
     categoryId: v.id("categories"),
+    type: v.optional(v.union(v.literal("expense"), v.literal("income"))),
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -45,6 +46,7 @@ export const createSubscription = mutation({
       accountId: args.accountId,
       categoryId: args.categoryId,
       status: "active",
+      type: args.type || "expense",
       description: args.description,
       isDeleted: false,
     });
@@ -90,24 +92,26 @@ export const getSubscriptionSummary = query({
     const accountMap = new Map(accounts.map((a) => [a._id.toString(), a]));
     const categoryMap = new Map(allCategories.map((c) => [c._id.toString(), c]));
 
-
     const now = Date.now();
     const sevenDaysFromNow = now + 7 * 24 * 60 * 60 * 1000;
 
     let totalMonthlyCost = 0;
     let totalYearlyCost = 0;
+    let totalMonthlyIncome = 0;
+    let totalYearlyIncome = 0;
 
     const items = subscriptions.map((sub) => {
       const account = accountMap.get(sub.accountId.toString());
       const category = categoryMap.get(sub.categoryId.toString());
+      const subType = sub.type || "expense";
 
-      // Normalize amounts to compute total recurring expense rates
+      // Normalize amounts to compute total recurring rates
       let monthlyContribution = 0;
       let yearlyContribution = 0;
 
       if (sub.status === "active") {
         if (sub.frequency === "weekly") {
-          monthlyContribution = sub.amount * (52 / 12); // Average weeks per month
+          monthlyContribution = sub.amount * (52 / 12);
           yearlyContribution = sub.amount * 52;
         } else if (sub.frequency === "monthly") {
           monthlyContribution = sub.amount;
@@ -118,14 +122,20 @@ export const getSubscriptionSummary = query({
         }
       }
 
-      totalMonthlyCost += monthlyContribution;
-      totalYearlyCost += yearlyContribution;
+      if (subType === "income") {
+        totalMonthlyIncome += monthlyContribution;
+        totalYearlyIncome += yearlyContribution;
+      } else {
+        totalMonthlyCost += monthlyContribution;
+        totalYearlyCost += yearlyContribution;
+      }
 
       const isDueSoon = sub.status === "active" && sub.nextBillingDate <= sevenDaysFromNow && sub.nextBillingDate >= now;
       const isOverdue = sub.status === "active" && sub.nextBillingDate < now;
 
       return {
         ...sub,
+        type: subType,
         accountName: account?.accountName || "Unknown Account",
         categoryName: category?.name || "Unknown Category",
         categoryColor: category?.color || "#94a3b8",
@@ -138,21 +148,23 @@ export const getSubscriptionSummary = query({
     // Sort: Overdue first, then due soon, then by next billing date
     items.sort((a, b) => {
       if (a.status !== b.status) {
-        return a.status === "active" ? -1 : 1; // Active first
+        return a.status === "active" ? -1 : 1;
       }
       if (a.isOverdue !== b.isOverdue) {
-        return a.isOverdue ? -1 : 1; // Overdue first
+        return a.isOverdue ? -1 : 1;
       }
       if (a.isDueSoon !== b.isDueSoon) {
-        return a.isDueSoon ? -1 : 1; // Due soon first
+        return a.isDueSoon ? -1 : 1;
       }
-      return a.nextBillingDate - b.nextBillingDate; // Earliest next billing date first
+      return a.nextBillingDate - b.nextBillingDate;
     });
 
     return {
       items,
       totalMonthlyCost,
       totalYearlyCost,
+      totalMonthlyIncome,
+      totalYearlyIncome,
     };
   },
 });
@@ -168,6 +180,7 @@ export const updateSubscription = mutation({
     accountId: v.id("accounts"),
     categoryId: v.id("categories"),
     status: v.string(), // "active", "paused", "cancelled"
+    type: v.optional(v.union(v.literal("expense"), v.literal("income"))),
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -202,7 +215,7 @@ export const deleteSubscription = mutation({
   },
 });
 
-// --- UPDATE: Mark Subscription as Paid (Log Expense and Advance Date) ---
+// --- UPDATE: Mark Subscription as Paid/Collected ---
 export const paySubscription = mutation({
   args: { id: v.id("subscriptions") },
   handler: async (ctx, args) => {
@@ -215,7 +228,7 @@ export const paySubscription = mutation({
     }
 
     if (sub.status !== "active") {
-      throw new Error("Cannot pay a non-active subscription");
+      throw new Error("Cannot process a non-active subscription/retainer");
     }
 
     // 1. Get account and category info for transaction log
@@ -224,13 +237,14 @@ export const paySubscription = mutation({
 
     const category = await ctx.db.get(sub.categoryId);
     const categoryName = category?.name || "Subscription";
+    const subType = sub.type || "expense";
 
-    // 2. Insert into financials (Expense record)
+    // 2. Insert into financials (Expense or Income record)
     await ctx.db.insert("financials", {
       userId: identity.subject,
-      title: `Subscription: ${sub.name}`,
+      title: subType === "income" ? `Client Retainer: ${sub.name}` : `Subscription: ${sub.name}`,
       amount: sub.amount,
-      type: "expense",
+      type: subType,
       category: categoryName,
       categoryId: sub.categoryId,
       accountId: sub.accountId,
@@ -240,13 +254,13 @@ export const paySubscription = mutation({
       isDeleted: false,
     });
 
-    // 3. Deduct from account balance
+    // 3. Update account balance (Deposit for income, deduct for expense)
+    const newBalance = subType === "income" ? account.balance + sub.amount : account.balance - sub.amount;
     await ctx.db.patch(sub.accountId, {
-      balance: account.balance - sub.amount,
+      balance: newBalance,
     });
 
     // 4. Calculate next billing date
-    // If the nextBillingDate is already in the past, advance from today. Otherwise, advance from nextBillingDate.
     const baseDate = Math.max(sub.nextBillingDate, Date.now());
     const nextBillingDate = calculateNextBillingDate(baseDate, sub.frequency);
 

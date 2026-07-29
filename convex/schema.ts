@@ -100,6 +100,19 @@ export default defineSchema({
     claimedAt: v.optional(v.number()), // Unix timestamp of base pay claim
     otClaimed: v.optional(v.boolean()), // Has this cutoff's OT pay been claimed?
     otClaimedAt: v.optional(v.number()), // Unix timestamp of OT claim
+    jobId: v.optional(v.id("jobs")), // ID of the job/sideline profile
+    jobTitle: v.optional(v.string()), // Title of the job/sideline profile
+  }).index("by_userId", ["userId"]),
+
+  // Jobs / Sidelines Profiles (Multiple income rates)
+  jobs: defineTable({
+    userId: v.string(),
+    title: v.string(), // e.g., "Primary Job", "Freelance Client A", "Sideline B"
+    baseDailyRate: v.number(),
+    otHourlyRate: v.number(),
+    lateRatePerMin: v.optional(v.number()),
+    color: v.optional(v.string()), // e.g., "#4F46E5" for UI badges
+    isDefault: v.optional(v.boolean()),
   }).index("by_userId", ["userId"]),
 
   payrollSettings: defineTable({
@@ -125,16 +138,17 @@ export default defineSchema({
     order: v.optional(v.number()), // for sorting
   }).index("by_userId", ["userId"]),
 
-  // 4. NEW: SUBSCRIPTIONS TABLE (For tracking recurring subscriptions/expenses)
+  // 4. NEW: SUBSCRIPTIONS TABLE (For tracking recurring subscriptions/expenses or client income retainers)
   subscriptions: defineTable({
     userId: v.string(),
     name: v.string(),
     amount: v.number(),
     frequency: v.union(v.literal("monthly"), v.literal("yearly"), v.literal("weekly")),
     nextBillingDate: v.number(), // Unix timestamp (millisecond representation) of next payment
-    accountId: v.id("accounts"), // Account from which this subscription is paid
-    categoryId: v.id("categories"), // Category, e.g. "Software", "Utilities"
+    accountId: v.id("accounts"), // Account from which this subscription is paid or deposited
+    categoryId: v.id("categories"), // Category, e.g. "Software", "Salary", "Freelance"
     status: v.string(), // "active", "paused", "cancelled"
+    type: v.optional(v.union(v.literal("expense"), v.literal("income"))), // "expense" (outflow) or "income" (client retainer inflow)
     description: v.optional(v.string()), // Notes/details
     isDeleted: v.optional(v.boolean()), // Soft delete support
   }).index("by_userId", ["userId"]),

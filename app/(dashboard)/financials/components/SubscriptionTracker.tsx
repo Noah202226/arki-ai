@@ -46,6 +46,7 @@ export function SubscriptionTracker() {
   const [selectedSub, setSelectedSub] = useState<any>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<"all" | "expense" | "income">("all");
 
   // Delete confirmation dialog state
   const [subToDelete, setSubToDelete] = useState<{ id: Id<"subscriptions">; name: string } | null>(null);
@@ -71,23 +72,24 @@ export function SubscriptionTracker() {
     setIsDeleting(true);
     try {
       await deleteSubscription({ id: subToDelete.id });
-      toast.success(`"${subToDelete.name}" subscription removed.`);
+      toast.success(`"${subToDelete.name}" entry removed.`);
       setSubToDelete(null);
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : "Failed to delete subscription.";
+      const errorMsg = err instanceof Error ? err.message : "Failed to delete item.";
       toast.error(errorMsg);
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const handlePay = async (id: Id<"subscriptions">, name: string) => {
+  const handlePay = async (id: Id<"subscriptions">, name: string, type?: string) => {
     setPayingId(id);
     try {
       await paySubscription({ id });
-      toast.success(`Payment logged for "${name}".`);
+      const actionText = type === "income" ? "Collection logged" : "Payment logged";
+      toast.success(`${actionText} for "${name}".`);
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : "Payment failed. Check account balance.";
+      const errorMsg = err instanceof Error ? err.message : "Operation failed.";
       toast.error(errorMsg);
     } finally {
       setPayingId(null);
@@ -95,11 +97,16 @@ export function SubscriptionTracker() {
   };
 
   const formatFrequency = (freq: string) => {
-    if (freq === "weekly") return "week";
+    if (freq === "weekly") return "wk";
     if (freq === "monthly") return "mo";
     if (freq === "yearly") return "yr";
     return freq;
   };
+
+  const filteredItems = summary.items.filter((item) => {
+    if (filterType === "all") return true;
+    return (item.type || "expense") === filterType;
+  });
 
   return (
     <div className="space-y-6 max-w-full overflow-hidden px-1">
@@ -108,13 +115,50 @@ export function SubscriptionTracker() {
         <div className="space-y-0.5">
           <h3 className="text-xl font-bold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
             <CreditCard className="w-5 h-5 text-[#ff6b35]" />
-            Recurring Expenses
+            Recurring Retainers & Subscriptions
           </h3>
           <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">
-            Track and log your active subscription plans.
+            Track client retainers (inflow) & active plans (outflow).
           </p>
         </div>
         <AddSubscriptionDialog />
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl max-w-fit">
+        <button
+          onClick={() => setFilterType("all")}
+          className={cn(
+            "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+            filterType === "all"
+              ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm"
+              : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+          )}
+        >
+          All ({summary.items.length})
+        </button>
+        <button
+          onClick={() => setFilterType("income")}
+          className={cn(
+            "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+            filterType === "income"
+              ? "bg-emerald-500 text-white shadow-sm"
+              : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+          )}
+        >
+          💰 Client Income ({summary.items.filter((i) => i.type === "income").length})
+        </button>
+        <button
+          onClick={() => setFilterType("expense")}
+          className={cn(
+            "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+            filterType === "expense"
+              ? "bg-slate-900 dark:bg-slate-700 text-white shadow-sm"
+              : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+          )}
+        >
+          💳 Expenses ({summary.items.filter((i) => i.type !== "income").length})
+        </button>
       </div>
 
       {/* Summary Cards */}
@@ -122,23 +166,9 @@ export function SubscriptionTracker() {
         <Card className="bg-slate-900 dark:bg-slate-800/80 text-white border border-slate-800 dark:border-slate-700/50 shadow-md overflow-hidden">
           <CardContent className="p-4 flex items-center justify-between">
             <div className="space-y-1">
-              <p className="text-slate-400 text-[9px] uppercase tracking-wider font-bold">Monthly Total</p>
-              <p className="text-xl font-black font-mono text-[#ff6b35]">
-                ₱{Math.round(summary.totalMonthlyCost).toLocaleString()}
-              </p>
-            </div>
-            <div className="bg-[#ff6b35]/10 p-2 rounded-xl text-[#ff6b35]">
-              <Clock className="w-4 h-4" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-slate-900 dark:bg-slate-800/80 text-white border border-slate-800 dark:border-slate-700/50 shadow-md overflow-hidden">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="space-y-1">
-              <p className="text-slate-400 text-[9px] uppercase tracking-wider font-bold">Yearly Total</p>
+              <p className="text-slate-400 text-[9px] uppercase tracking-wider font-bold">Monthly Client Retainers</p>
               <p className="text-xl font-black font-mono text-emerald-400">
-                ₱{Math.round(summary.totalYearlyCost).toLocaleString()}
+                +₱{Math.round(summary.totalMonthlyIncome || 0).toLocaleString()}
               </p>
             </div>
             <div className="bg-emerald-500/10 p-2 rounded-xl text-emerald-400">
@@ -146,44 +176,63 @@ export function SubscriptionTracker() {
             </div>
           </CardContent>
         </Card>
+
+        <Card className="bg-slate-900 dark:bg-slate-800/80 text-white border border-slate-800 dark:border-slate-700/50 shadow-md overflow-hidden">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-slate-400 text-[9px] uppercase tracking-wider font-bold">Monthly Recurring Expenses</p>
+              <p className="text-xl font-black font-mono text-[#ff6b35]">
+                -₱{Math.round(summary.totalMonthlyCost).toLocaleString()}
+              </p>
+            </div>
+            <div className="bg-[#ff6b35]/10 p-2 rounded-xl text-[#ff6b35]">
+              <Clock className="w-4 h-4" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Subscription List */}
-      {summary.items.length === 0 ? (
+      {filteredItems.length === 0 ? (
         <div className="text-center py-10 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl p-6">
           <Sparkles className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-          <h4 className="font-bold text-slate-700 dark:text-slate-200 text-sm">No Subscriptions Added</h4>
+          <h4 className="font-bold text-slate-700 dark:text-slate-200 text-sm">No Entries Found</h4>
           <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 max-w-[250px] mx-auto">
-            Log your software, services or utilities here to start monitoring recurring charges.
+            Click &quot;Add Subscription&quot; to log client retainers or recurring subscription plans.
           </p>
         </div>
       ) : (
         <div className="grid gap-3">
-          {summary.items.map((sub) => {
+          {filteredItems.map((sub) => {
             const isPaying = payingId === sub._id;
+            const isIncome = sub.type === "income";
+
             return (
               <div
                 key={sub._id}
                 className={cn(
                   "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 transition-all duration-200 shadow-sm relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-300 dark:hover:border-slate-700",
-                  sub.isOverdue && "border-rose-200 bg-rose-50/20 dark:border-rose-900/40 dark:bg-rose-950/20 hover:border-rose-300 dark:hover:border-rose-800",
-                  sub.isDueSoon && "border-amber-200 bg-amber-50/10 dark:border-amber-900/40 dark:bg-amber-950/20 hover:border-amber-300 dark:hover:border-amber-800",
+                  sub.isOverdue && "border-rose-200 bg-rose-50/20 dark:border-rose-900/40 dark:bg-rose-950/20",
+                  sub.isDueSoon && "border-amber-200 bg-amber-50/10 dark:border-amber-900/40 dark:bg-amber-950/20",
                   sub.status !== "active" && "opacity-75"
                 )}
               >
                 {/* Category color stripe */}
                 <div
                   className="absolute top-0 left-0 bottom-0 w-[4px]"
-                  style={{ backgroundColor: sub.categoryColor ?? "#94a3b8" }}
+                  style={{ backgroundColor: isIncome ? "#10b981" : (sub.categoryColor ?? "#94a3b8") }}
                 />
 
                 <div className="flex items-start gap-3 pl-1.5 flex-1 min-w-0">
                   {/* Icon */}
                   <div
-                    className="p-2 rounded-xl shrink-0 text-white flex items-center justify-center shadow-sm"
-                    style={{ backgroundColor: sub.categoryColor ?? "#94a3b8" }}
+                    className={cn(
+                      "p-2 rounded-xl shrink-0 text-white flex items-center justify-center shadow-sm",
+                      isIncome ? "bg-emerald-500" : ""
+                    )}
+                    style={{ backgroundColor: isIncome ? undefined : (sub.categoryColor ?? "#94a3b8") }}
                   >
-                    <CreditCard className="w-4 h-4" />
+                    {isIncome ? <TrendingUp className="w-4 h-4" /> : <CreditCard className="w-4 h-4" />}
                   </div>
 
                   {/* Text Info */}
@@ -192,24 +241,23 @@ export function SubscriptionTracker() {
                       <h4 className="font-extrabold text-sm text-slate-800 dark:text-slate-100 truncate leading-none">
                         {sub.name}
                       </h4>
+                      {isIncome ? (
+                        <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md">
+                          Client Retainer
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-slate-500 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md">
+                          Expense
+                        </Badge>
+                      )}
                       {sub.isOverdue && (
                         <Badge variant="destructive" className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md">
                           Overdue
                         </Badge>
                       )}
                       {sub.isDueSoon && (
-                        <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md">
+                        <Badge className="bg-amber-500 text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md">
                           Due Soon
-                        </Badge>
-                      )}
-                      {sub.status === "paused" && (
-                        <Badge variant="secondary" className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md">
-                          Paused
-                        </Badge>
-                      )}
-                      {sub.status === "cancelled" && (
-                        <Badge variant="outline" className="text-slate-400 dark:text-slate-500 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md">
-                          Cancelled
                         </Badge>
                       )}
                     </div>
@@ -237,8 +285,8 @@ export function SubscriptionTracker() {
                 <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
                   <div className="text-right shrink-0">
                     <p className="text-xs text-slate-400 dark:text-slate-500 font-bold leading-none">Amount</p>
-                    <p className="text-base font-black font-mono text-slate-800 dark:text-slate-100">
-                      ₱{sub.amount.toLocaleString()}
+                    <p className={cn("text-base font-black font-mono", isIncome ? "text-emerald-600 dark:text-emerald-400" : "text-slate-800 dark:text-slate-100")}>
+                      {isIncome ? "+" : ""}₱{sub.amount.toLocaleString()}
                       <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold font-sans">
                         /{formatFrequency(sub.frequency)}
                       </span>
@@ -248,11 +296,13 @@ export function SubscriptionTracker() {
                   {sub.status === "active" && (
                     <Button
                       size="sm"
-                      onClick={() => handlePay(sub._id, sub.name)}
+                      onClick={() => handlePay(sub._id, sub.name, sub.type)}
                       disabled={isPaying}
                       className={cn(
                         "h-8 rounded-xl font-bold text-xs shrink-0 shadow-sm gap-1.5",
-                        sub.isOverdue
+                        isIncome
+                          ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                          : sub.isOverdue
                           ? "bg-rose-600 hover:bg-rose-700 text-white"
                           : sub.isDueSoon
                           ? "bg-amber-600 hover:bg-amber-700 text-white"
@@ -260,7 +310,9 @@ export function SubscriptionTracker() {
                       )}
                     >
                       {isPaying ? (
-                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Logging...</>
+                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing...</>
+                      ) : isIncome ? (
+                        "Log Collection"
                       ) : (
                         "Log Payment"
                       )}
@@ -294,7 +346,7 @@ export function SubscriptionTracker() {
                         onClick={() => setSubToDelete({ id: sub._id, name: sub.name })}
                         className="flex items-center gap-2 text-xs font-bold text-rose-600 dark:text-rose-400 py-2.5 rounded-lg cursor-pointer hover:bg-rose-50 dark:hover:bg-rose-950/40"
                       >
-                        <Trash2 className="w-3.5 h-3.5" /> Remove Plan
+                        <Trash2 className="w-3.5 h-3.5" /> Remove Entry
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

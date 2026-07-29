@@ -43,9 +43,12 @@ export function PayrollTracker() {
   const updateWorkLog = useMutation(api.payroll.updateWorkDay);
   const deleteWorkLog = useMutation(api.payroll.deleteWorkDay);
   const claimPayroll = useMutation(api.payroll.claimPayroll);
+  const createJob = useMutation(api.payroll.createJob);
+  const deleteJob = useMutation(api.payroll.deleteJob);
   const accounts = useQuery(api.accounts.getAccounts);
 
   const logs = payrollData?.logs || [];
+  const jobs = payrollData?.jobs || [];
   const settings = payrollData?.settings;
   const stats = payrollData?.stats || {
     daysWorked: 0,
@@ -91,7 +94,14 @@ export function PayrollTracker() {
   const [editOtHourlyRate, setEditOtHourlyRate] = useState("");
   const [editLateMinutes, setEditLateMinutes] = useState("");
 
+  // Job Profile Creation State
+  const [newJobTitle, setNewJobTitle] = useState("");
+  const [newJobBaseRate, setNewJobBaseRate] = useState("");
+  const [newJobOtRate, setNewJobOtRate] = useState("");
+  const [isCreatingJob, setIsCreatingJob] = useState(false);
+
   // Form State definitions
+  const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [otHours, setOtHours] = useState("");
   const [lateMinutes, setLateMinutes] = useState("");
   const [isWorked, setIsWorked] = useState(true);
@@ -175,25 +185,69 @@ export function PayrollTracker() {
   const remainingOT = Math.max(0, stats.expectedOT - (claimType === "base" ? 0 : previewSelectedOT));
   const remainingTotal = remainingBase + remainingOT;
 
-  const handleLogDay = async (e: React.FormEvent) => {
+  const selectedJob = jobs.find((j) => j._id === selectedJobId);
+
+  const handleCreateJob = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!settings) {
-      toast.error("Please configure your payroll settings first.");
+    if (!newJobTitle || !newJobBaseRate) {
+      toast.error("Please enter a job title and base daily rate.");
       return;
     }
+    setIsCreatingJob(true);
+    try {
+      await createJob({
+        title: newJobTitle,
+        baseDailyRate: parseFloat(newJobBaseRate) || 0,
+        otHourlyRate: parseFloat(newJobOtRate) || 0,
+      });
+      toast.success(`Job profile "${newJobTitle}" created!`);
+      setNewJobTitle("");
+      setNewJobBaseRate("");
+      setNewJobOtRate("");
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to create job profile.";
+      toast.error(errorMsg);
+    } finally {
+      setIsCreatingJob(false);
+    }
+  };
+
+  const handleDeleteJobProfile = async (id: Id<"jobs">, title: string) => {
+    try {
+      await deleteJob({ id });
+      toast.success(`Job profile "${title}" removed.`);
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to delete job profile.";
+      toast.error(errorMsg);
+    }
+  };
+
+  const handleLogDay = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!settings && !selectedJob) {
+      toast.error("Please configure your payroll settings or select a job profile.");
+      return;
+    }
+
+    const jobBaseRate = selectedJob ? selectedJob.baseDailyRate : settings?.baseDailyRate || 0;
+    const jobOtRate = selectedJob ? selectedJob.otHourlyRate : settings?.otHourlyRate || 0;
+
     try {
       await logWorkDay({
         date: logDate,
-        baseDailyRate: settings.baseDailyRate,
+        baseDailyRate: jobBaseRate,
         isWorked,
         otHours: isWorked ? parseFloat(otHours) || 0 : 0,
-        otHourlyRate: settings.otHourlyRate,
+        otHourlyRate: jobOtRate,
         lateMinutes: isWorked ? parseInt(lateMinutes) || 0 : 0,
+        jobId: selectedJob ? (selectedJob._id as Id<"jobs">) : undefined,
+        jobTitle: selectedJob ? selectedJob.title : undefined,
       });
       toast.success("Work log entry saved successfully!");
       setIsLogOpen(false);
       setOtHours("");
       setLateMinutes("");
+      setSelectedJobId("");
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : "Failed to record work log.";
       toast.error(errorMsg);
@@ -452,6 +506,28 @@ export function PayrollTracker() {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleLogDay} className="space-y-5 pt-3">
+              {/* Job / Sideline Selection */}
+              {jobs.length > 0 && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-400">
+                    Job / Sideline Profile
+                  </label>
+                  <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                    <SelectTrigger className="h-12 rounded-xl font-bold border-2">
+                      <SelectValue placeholder="Default Payroll Settings Rate" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="default">Default Payroll Settings</SelectItem>
+                      {jobs.map((j) => (
+                        <SelectItem key={j._id} value={j._id}>
+                          {j.title} (₱{j.baseDailyRate}/day, ₱{j.otHourlyRate}/hr OT)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <label className="text-xs font-black uppercase tracking-wider text-slate-400">
                   Target Log Date
@@ -770,6 +846,75 @@ export function PayrollTracker() {
                 </div>
               </div>
 
+              {/* MULTI-JOB / SIDELINE PROFILES */}
+              <div className="border-t pt-4 space-y-3">
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                  <span>Job & Sideline Profiles</span>
+                  <span className="text-[10px] text-indigo-500 font-normal">Multi-Rate Support</span>
+                </h4>
+
+                {/* List existing job profiles */}
+                {jobs.length > 0 && (
+                  <div className="space-y-2">
+                    {jobs.map((j) => (
+                      <div key={j._id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border">
+                        <div>
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{j.title}</p>
+                          <p className="text-[10px] text-slate-400 font-mono">
+                            Base: ₱{j.baseDailyRate}/day • OT: ₱{j.otHourlyRate}/hr
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                          onClick={() => handleDeleteJobProfile(j._id, j.title)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add new job profile mini form */}
+                <div className="p-3 bg-indigo-50/40 dark:bg-indigo-950/20 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 space-y-3">
+                  <p className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300">+ Add New Job / Client Profile</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <Input
+                      placeholder="Title (e.g. Client A)"
+                      value={newJobTitle}
+                      onChange={(e) => setNewJobTitle(e.target.value)}
+                      className="h-10 text-xs font-medium rounded-xl border-2"
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Daily Rate (₱)"
+                      value={newJobBaseRate}
+                      onChange={(e) => setNewJobBaseRate(e.target.value)}
+                      className="h-10 text-xs font-bold font-mono rounded-xl border-2"
+                    />
+                    <Input
+                      type="number"
+                      placeholder="OT Rate (₱)"
+                      value={newJobOtRate}
+                      onChange={(e) => setNewJobOtRate(e.target.value)}
+                      className="h-10 text-xs font-bold font-mono rounded-xl border-2"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleCreateJob}
+                    disabled={isCreatingJob || !newJobTitle || !newJobBaseRate}
+                    className="w-full h-9 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl gap-1.5"
+                  >
+                    {isCreatingJob ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                    Add Job Profile
+                  </Button>
+                </div>
+              </div>
+
               <Button
                 type="submit"
                 className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 font-black rounded-xl mt-2"
@@ -809,6 +954,11 @@ export function PayrollTracker() {
                         {formatDate(log.date)}
                       </span>
                       <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                        {log.jobTitle && (
+                          <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/40">
+                            💼 {log.jobTitle}
+                          </span>
+                        )}
                         <span
                           className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
                             log.isWorked
