@@ -2,9 +2,11 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 // Helper to calculate the next billing date
-function calculateNextBillingDate(current: number, frequency: "weekly" | "monthly" | "yearly"): number {
+function calculateNextBillingDate(current: number, frequency: "daily" | "weekly" | "monthly" | "yearly"): number {
   const date = new Date(current);
-  if (frequency === "weekly") {
+  if (frequency === "daily") {
+    date.setDate(date.getDate() + 1);
+  } else if (frequency === "weekly") {
     date.setDate(date.getDate() + 7);
   } else if (frequency === "monthly") {
     date.setMonth(date.getMonth() + 1);
@@ -19,7 +21,7 @@ export const createSubscription = mutation({
   args: {
     name: v.string(),
     amount: v.number(),
-    frequency: v.union(v.literal("monthly"), v.literal("yearly"), v.literal("weekly")),
+    frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
     nextBillingDate: v.number(),
     accountId: v.id("accounts"),
     categoryId: v.id("categories"),
@@ -110,7 +112,10 @@ export const getSubscriptionSummary = query({
       let yearlyContribution = 0;
 
       if (sub.status === "active") {
-        if (sub.frequency === "weekly") {
+        if (sub.frequency === "daily") {
+          monthlyContribution = sub.amount * 30;
+          yearlyContribution = sub.amount * 365;
+        } else if (sub.frequency === "weekly") {
           monthlyContribution = sub.amount * (52 / 12);
           yearlyContribution = sub.amount * 52;
         } else if (sub.frequency === "monthly") {
@@ -175,7 +180,7 @@ export const updateSubscription = mutation({
     id: v.id("subscriptions"),
     name: v.string(),
     amount: v.number(),
-    frequency: v.union(v.literal("monthly"), v.literal("yearly"), v.literal("weekly")),
+    frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
     nextBillingDate: v.number(),
     accountId: v.id("accounts"),
     categoryId: v.id("categories"),
@@ -272,3 +277,72 @@ export const paySubscription = mutation({
     return nextBillingDate;
   },
 });
+
+// --- AUTOMATION: Auto-process all active due subscriptions & daily client retainers ---
+export const processDueSubscriptions = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return { processedCount: 0 };
+
+    const now = Date.now();
+
+    // Fetch active subscriptions that are due
+    const activeSubs = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("status"), "active"),
+          q.not(q.eq(q.field("isDeleted"), true)),
+          q.lte(q.field("nextBillingDate"), now)
+        )
+      )
+      .collect();
+
+    let processedCount = 0;
+
+    for (const sub of activeSubs) {
+      const account = await ctx.db.get(sub.accountId);
+      if (!account) continue;
+
+      const category = await ctx.db.get(sub.categoryId);
+      const categoryName = category?.name || (sub.type === "income" ? "Client Income" : "Subscription");
+      const subType = sub.type || "expense";
+
+      // 1. Log transaction into financials
+      await ctx.db.insert("financials", {
+        userId: identity.subject,
+        title: subType === "income" ? `Daily Retainer: ${sub.name}` : `Recurring Expense: ${sub.name}`,
+        amount: sub.amount,
+        type: subType,
+        category: categoryName,
+        categoryId: sub.categoryId,
+        accountId: sub.accountId,
+        status: "completed",
+        frequency: sub.frequency,
+        dueDate: now,
+        isDeleted: false,
+      });
+
+      // 2. Update account balance
+      const newBalance = subType === "income" ? account.balance + sub.amount : account.balance - sub.amount;
+      await ctx.db.patch(sub.accountId, {
+        balance: newBalance,
+      });
+
+      // 3. Update next billing date (+1 day for daily, etc)
+      const baseDate = Math.max(sub.nextBillingDate, now);
+      const nextBillingDate = calculateNextBillingDate(baseDate, sub.frequency);
+
+      await ctx.db.patch(sub._id, {
+        nextBillingDate,
+      });
+
+      processedCount++;
+    }
+
+    return { processedCount };
+  },
+});
+

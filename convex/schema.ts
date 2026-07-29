@@ -143,7 +143,7 @@ export default defineSchema({
     userId: v.string(),
     name: v.string(),
     amount: v.number(),
-    frequency: v.union(v.literal("monthly"), v.literal("yearly"), v.literal("weekly")),
+    frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
     nextBillingDate: v.number(), // Unix timestamp (millisecond representation) of next payment
     accountId: v.id("accounts"), // Account from which this subscription is paid or deposited
     categoryId: v.id("categories"), // Category, e.g. "Software", "Salary", "Freelance"
@@ -151,5 +151,43 @@ export default defineSchema({
     type: v.optional(v.union(v.literal("expense"), v.literal("income"))), // "expense" (outflow) or "income" (client retainer inflow)
     description: v.optional(v.string()), // Notes/details
     isDeleted: v.optional(v.boolean()), // Soft delete support
+  }).index("by_userId", ["userId"]),
+
+  // 5. LIFESTYLE COST & REFERENCE SETTINGS (Persisted user inputs)
+  lifestyleSettings: defineTable({
+    userId: v.string(),
+    housingMonthly: v.number(),
+    utilitiesMonthly: v.number(),
+    foodMonthly: v.number(),
+    transportMonthly: v.number(),
+    savingsBufferPercent: v.number(),
+    useLivePayroll: v.optional(v.boolean()),
+    customIncome: v.optional(v.number()),
+    useLiveSubscriptions: v.optional(v.boolean()),
+    customSubscriptionsCost: v.optional(v.number()),
+    useLiveDebt: v.optional(v.boolean()),
+    customDebtCost: v.optional(v.number()),
+    leisureItems: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          name: v.string(),
+          amount: v.number(),
+          frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
+        })
+      )
+    ),
+  }).index("by_userId", ["userId"]),
+
+  // 6. FINANCIAL GOALS TABLE (Persisted goal system linked to wallets)
+  financialGoals: defineTable({
+    userId: v.string(),
+    name: v.string(),
+    targetAmount: v.number(),
+    months: v.number(),
+    linkedAccountId: v.optional(v.union(v.id("accounts"), v.string())),
+    customSaved: v.optional(v.number()),
+    category: v.optional(v.string()),
+    isCompleted: v.optional(v.boolean()),
   }).index("by_userId", ["userId"]),
 });

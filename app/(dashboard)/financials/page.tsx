@@ -8,17 +8,19 @@ import { TransactionHistory } from "@/app/(dashboard)/financials/components/Tran
 import { CreditTracker } from "@/app/(dashboard)/financials/components/CreditTracker";
 import { PayrollTracker } from "@/app/(dashboard)/financials/components/payroll-tracker";
 import { SubscriptionTracker } from "@/app/(dashboard)/financials/components/SubscriptionTracker";
+import { LifestyleCostCalculator } from "@/app/(dashboard)/financials/components/LifestyleCostCalculator";
 import { Button } from "@/components/ui/button";
-import { FileText, Wallet, Calendar, ShieldAlert, History, CreditCard } from "lucide-react";
+import { FileText, Wallet, Calendar, ShieldAlert, History, CreditCard, Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type TabId = "all" | "wallets" | "payroll" | "credits" | "subscriptions" | "transactions";
+type TabId = "all" | "lifestyle" | "wallets" | "payroll" | "credits" | "subscriptions" | "transactions";
 
 export default function FinancialsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("all");
 
   const tabs = [
     { id: "all", label: "Show All", icon: FileText },
+    { id: "lifestyle", label: "Cost of Living", icon: Compass },
     { id: "wallets", label: "Wallets", icon: Wallet },
     { id: "payroll", label: "Expected Income", icon: Calendar },
     { id: "credits", label: "Credits", icon: ShieldAlert },
@@ -92,6 +94,22 @@ export default function FinancialsPage() {
             activeTab !== "all" && "divide-y-0"
           )}
         >
+          {/* Section 0: Lifestyle & Cost of Living */}
+          <section
+            className={cn(
+              "p-4 sm:p-6",
+              activeTab !== "all" && activeTab !== "lifestyle" && "hidden lg:block"
+            )}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e] dark:text-slate-100">
+                <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
+                Lifestyle &amp; Cost of Living
+              </h2>
+            </div>
+            <LifestyleCostCalculator />
+          </section>
+
           {/* Section 1: Accounts */}
           <section
             className={cn(

@@ -13,6 +13,7 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   AlertTriangle,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ export function TransactionHistory() {
     { initialNumItems: 50 }
   );
   const categories = useQuery(api.categories.getCategories, {});
+  const accounts = useQuery(api.accounts.getAccounts, {});
   const removeTransaction = useMutation(api.financials.softDeleteTransaction);
 
   const [txToDelete, setTxToDelete] = useState<{ id: Id<"financials">; title: string } | null>(null);
@@ -169,6 +171,7 @@ export function TransactionHistory() {
                   (c) => c.name.toLowerCase() === tx.category?.toLowerCase(),
                 );
                 const catColor = categoryMatch?.color || "#94a3b8";
+                const account = accounts?.find((a) => a._id === tx.accountId);
 
                 return (
                   <div
@@ -213,7 +216,7 @@ export function TransactionHistory() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5">
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         <span className="text-[10px] text-slate-400 font-mono">
                           {format(tx.dueDate, "hh:mm a")}
                         </span>
@@ -227,6 +230,12 @@ export function TransactionHistory() {
                         >
                           {categoryMatch?.name || tx.category || "General"}
                         </span>
+                        {account && (
+                          <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1 shrink-0 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700/60">
+                            <Wallet className="w-2.5 h-2.5 text-slate-400" />
+                            {account.accountName}
+                          </span>
+                        )}
                       </div>
                     </div>
 

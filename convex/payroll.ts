@@ -410,6 +410,7 @@ export const claimPayroll = mutation({
       status: "completed",
       frequency: "one-off",
       dueDate: now,
+      isDeleted: false,
     });
 
     return { success: true };

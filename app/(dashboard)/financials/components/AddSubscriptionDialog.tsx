@@ -39,7 +39,7 @@ export function AddSubscriptionDialog() {
 
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
-  const [frequency, setFrequency] = useState<"weekly" | "monthly" | "yearly">("monthly");
+  const [frequency, setFrequency] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly");
   const [nextBillingDate, setNextBillingDate] = useState<Date>(new Date());
   const [accountId, setAccountId] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -167,11 +167,12 @@ export function AddSubscriptionDialog() {
               <Label className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 px-1 flex items-center gap-1">
                 <RefreshCw className="w-3 h-3 text-[#ff6b35]" /> Frequency
               </Label>
-              <Select value={frequency} onValueChange={(v) => setFrequency(v as "weekly" | "monthly" | "yearly")} disabled={isSubmitting}>
+              <Select value={frequency} onValueChange={(v) => setFrequency(v as "daily" | "weekly" | "monthly" | "yearly")} disabled={isSubmitting}>
                 <SelectTrigger className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 text-slate-900 dark:text-slate-100 h-11 rounded-xl focus:ring-2 focus:ring-[#ff6b35]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xl">
+                  <SelectItem value="daily">Daily</SelectItem>
                   <SelectItem value="weekly">Weekly</SelectItem>
                   <SelectItem value="monthly">Monthly</SelectItem>
                   <SelectItem value="yearly">Yearly</SelectItem>

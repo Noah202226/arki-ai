@@ -113,12 +113,13 @@ export const getTransactions = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
-    return await ctx.db
+    const txs = await ctx.db
       .query("financials")
       .withIndex("by_userId_and_date", (q) => q.eq("userId", identity.subject))
-      .filter((q) => q.eq(q.field("isDeleted"), false))
       .order("desc")
       .collect();
+
+    return txs.filter((tx) => tx.isDeleted !== true);
   },
 });
 
@@ -218,12 +219,14 @@ export const getTransactionsByAccount = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
-    return await ctx.db
+    const txs = await ctx.db
       .query("financials")
       // Siguraduhing may index ka sa schema.rb para sa accountId
       .withIndex("by_account", (q) => q.eq("accountId", args.accountId))
       .order("desc")
       .collect();
+
+    return txs.filter((tx) => tx.isDeleted !== true);
   },
 });
 
@@ -236,12 +239,16 @@ export const getPaginatedTransactions = query({
       return { page: [], isDone: true, continueCursor: "" };
     }
 
-    return await ctx.db
+    const results = await ctx.db
       .query("financials")
       .withIndex("by_userId_and_date", (q) => q.eq("userId", identity.subject))
-      .filter((q) => q.eq(q.field("isDeleted"), false)) // Only active transactions
       .order("desc")
       .paginate(args.paginationOpts);
+
+    return {
+      ...results,
+      page: results.page.filter((tx) => tx.isDeleted !== true),
+    };
   },
 });
 
