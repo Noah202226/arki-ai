@@ -88,7 +88,7 @@ export default defineSchema({
   workLogs: defineTable({
     userId: v.string(),
     date: v.string(), // Format: YYYY-MM-DD
-    cutOffPeriod: v.string(), // e.g., "May 15 - May 30"
+    cutOffPeriod: v.optional(v.string()), // e.g., "May 15 - May 30" (Optional)
 
     // Computation fields
     baseDailyRate: v.number(),
@@ -106,7 +106,7 @@ export default defineSchema({
     userId: v.string(),
     baseDailyRate: v.number(),
     otHourlyRate: v.number(),
-    currentCutOff: v.string(), // e.g., "May 15 - May 30"
+    currentCutOff: v.optional(v.string()), // Optional cut-off label
     // Deductions
     sssDeduction: v.optional(v.number()),
     philhealthDeduction: v.optional(v.number()),

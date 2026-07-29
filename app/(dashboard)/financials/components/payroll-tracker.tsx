@@ -45,6 +45,37 @@ export function PayrollTracker() {
   const claimPayroll = useMutation(api.payroll.claimPayroll);
   const accounts = useQuery(api.accounts.getAccounts);
 
+  const logs = payrollData?.logs || [];
+  const settings = payrollData?.settings;
+  const stats = payrollData?.stats || {
+    daysWorked: 0,
+    expectedBase: 0,
+    expectedOT: 0,
+    totalLatesMinutes: 0,
+    expectedLateDeductions: 0,
+    sssDeduction: 0,
+    philhealthDeduction: 0,
+    pagibigDeduction: 0,
+    taxDeduction: 0,
+    totalDeductions: 0,
+    totalExpected: 0,
+    netPay: 0,
+  };
+  const nextStats = payrollData?.nextStats || {
+    daysWorked: 0,
+    expectedBase: 0,
+    expectedOT: 0,
+    totalLatesMinutes: 0,
+    expectedLateDeductions: 0,
+    sssDeduction: 0,
+    philhealthDeduction: 0,
+    pagibigDeduction: 0,
+    taxDeduction: 0,
+    totalDeductions: 0,
+    totalExpected: 0,
+    netPay: 0,
+  };
+
   // Modals visibility states
   const [isLogOpen, setIsLogOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -68,66 +99,81 @@ export function PayrollTracker() {
     new Date().toISOString().split("T")[0],
   );
 
-  // Claim State definitions
-  const [claimType, setClaimType] = useState<"base" | "ot">("base");
-  const [claimAccountId, setClaimAccountId] = useState("");
-  const [isClaiming, setIsClaiming] = useState(false);
-
   // Settings State definitions
   const [baseDailyRate, setBaseDailyRate] = useState("");
   const [otHourlyRate, setOtHourlyRate] = useState("");
-  const [currentCutOff, setCurrentCutOff] = useState("");
   const [sssDeduction, setSssDeduction] = useState("");
   const [philhealthDeduction, setPhilhealthDeduction] = useState("");
   const [pagibigDeduction, setPagibigDeduction] = useState("");
   const [taxRate, setTaxRate] = useState("");
-  const [lateRatePerMin, setLateRatePerMin] = useState("");
 
-  const stats = payrollData?.stats || {
-    daysWorked: 0,
-    expectedBase: 0,
-    expectedOT: 0,
-    totalLatesMinutes: 0,
-    expectedLateDeductions: 0,
-    sssDeduction: 0,
-    philhealthDeduction: 0,
-    pagibigDeduction: 0,
-    taxDeduction: 0,
-    totalDeductions: 0,
-    totalExpected: 0,
-    netPay: 0,
-  };
-
-  const nextStats = payrollData?.nextStats || {
-    daysWorked: 0,
-    expectedBase: 0,
-    expectedOT: 0,
-    totalLatesMinutes: 0,
-    expectedLateDeductions: 0,
-    sssDeduction: 0,
-    philhealthDeduction: 0,
-    pagibigDeduction: 0,
-    taxDeduction: 0,
-    totalDeductions: 0,
-    totalExpected: 0,
-    netPay: 0,
-  };
-
-  const settings = payrollData?.settings;
-
-  // Sync settings configuration data to local states when available
+  // Populate settings form state when settings query loads
   useEffect(() => {
     if (settings) {
-      setBaseDailyRate(settings.baseDailyRate.toString());
-      setOtHourlyRate(settings.otHourlyRate.toString());
-      setCurrentCutOff(settings.currentCutOff);
+      setBaseDailyRate(settings.baseDailyRate?.toString() || "");
+      setOtHourlyRate(settings.otHourlyRate?.toString() || "");
       setSssDeduction(settings.sssDeduction?.toString() || "");
       setPhilhealthDeduction(settings.philhealthDeduction?.toString() || "");
       setPagibigDeduction(settings.pagibigDeduction?.toString() || "");
       setTaxRate(settings.taxRate?.toString() || "");
-      setLateRatePerMin(settings.lateRatePerMin?.toString() || "");
     }
   }, [settings]);
+
+  // Claim State definitions
+  const [claimType, setClaimType] = useState<"base" | "ot" | "both">("both");
+  const [claimStartDate, setClaimStartDate] = useState("");
+  const [claimEndDate, setClaimEndDate] = useState("");
+  const [claimAccountId, setClaimAccountId] = useState("");
+  const [isClaiming, setIsClaiming] = useState(false);
+
+  // When claim dialog opens, auto-fill date range from available logs
+  useEffect(() => {
+    if (isClaimOpen && logs.length > 0) {
+      const dates = logs.map((l) => l.date).sort();
+      setClaimStartDate(dates[0]);
+      setClaimEndDate(dates[dates.length - 1]);
+    }
+  }, [isClaimOpen, logs]);
+
+  // Calculate live preview totals for selected date range
+  const selectedRangeLogs = logs.filter(
+    (l) => l.date >= claimStartDate && l.date <= claimEndDate
+  );
+
+  let previewSelectedBase = 0;
+  let previewSelectedOT = 0;
+  let previewLateDeduction = 0;
+
+  selectedRangeLogs.forEach((log) => {
+    if (log.isWorked) {
+      if (!log.claimed) {
+        previewSelectedBase += log.baseDailyRate;
+        const lates = log.lateMinutes || 0;
+        const minLateRate = log.baseDailyRate ? log.baseDailyRate / (8 * 60) : 0;
+        previewLateDeduction += lates * minLateRate;
+      }
+      if (!log.otClaimed) {
+        previewSelectedOT += log.otHours * log.otHourlyRate;
+      }
+    }
+  });
+
+  const previewTaxDeduction = settings?.taxRate
+    ? previewSelectedBase * (settings.taxRate / 100)
+    : 0;
+  const previewNetBase = Math.max(
+    0,
+    previewSelectedBase - previewLateDeduction - previewTaxDeduction
+  );
+
+  let claimAmount = 0;
+  if (claimType === "base") claimAmount = previewNetBase;
+  else if (claimType === "ot") claimAmount = previewSelectedOT;
+  else if (claimType === "both") claimAmount = previewNetBase + previewSelectedOT;
+
+  const remainingBase = Math.max(0, stats.netPay - (claimType === "ot" ? 0 : previewNetBase));
+  const remainingOT = Math.max(0, stats.expectedOT - (claimType === "base" ? 0 : previewSelectedOT));
+  const remainingTotal = remainingBase + remainingOT;
 
   const handleLogDay = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,23 +181,22 @@ export function PayrollTracker() {
       toast.error("Please configure your payroll settings first.");
       return;
     }
-
     try {
       await logWorkDay({
         date: logDate,
-        cutOffPeriod: settings.currentCutOff,
         baseDailyRate: settings.baseDailyRate,
         isWorked,
-        otHours: isWorked ? Number(otHours) || 0 : 0,
+        otHours: isWorked ? parseFloat(otHours) || 0 : 0,
         otHourlyRate: settings.otHourlyRate,
-        lateMinutes: isWorked ? Number(lateMinutes) || 0 : 0,
+        lateMinutes: isWorked ? parseInt(lateMinutes) || 0 : 0,
       });
-      toast.success("Day logged successfully.");
+      toast.success("Work log entry saved successfully!");
       setIsLogOpen(false);
       setOtHours("");
       setLateMinutes("");
-    } catch {
-      toast.error("Failed to log day.");
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to record work log.";
+      toast.error(errorMsg);
     }
   };
 
@@ -159,63 +204,61 @@ export function PayrollTracker() {
     e.preventDefault();
     try {
       await saveSettings({
-        baseDailyRate: Number(baseDailyRate) || 0,
-        otHourlyRate: Number(otHourlyRate) || 0,
-        currentCutOff,
-        sssDeduction: Number(sssDeduction) || 0,
-        philhealthDeduction: Number(philhealthDeduction) || 0,
-        pagibigDeduction: Number(pagibigDeduction) || 0,
-        taxRate: Number(taxRate) || 0,
-        lateRatePerMin: Number(lateRatePerMin) || 0,
+        baseDailyRate: parseFloat(baseDailyRate) || 0,
+        otHourlyRate: parseFloat(otHourlyRate) || 0,
+        sssDeduction: parseFloat(sssDeduction) || 0,
+        philhealthDeduction: parseFloat(philhealthDeduction) || 0,
+        pagibigDeduction: parseFloat(pagibigDeduction) || 0,
+        taxRate: parseFloat(taxRate) || 0,
       });
-      toast.success("Settings updated.");
+      toast.success("Payroll settings updated!");
       setIsSettingsOpen(false);
-    } catch {
-      toast.error("Failed to update configurations.");
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to update settings.";
+      toast.error(errorMsg);
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleOpenEdit = (log: any) => {
+  const handleOpenEdit = (log: (typeof logs)[number]) => {
     setEditingLogId(log._id);
     setEditDate(log.date);
     setEditIsWorked(log.isWorked);
-    setEditOtHours(log.otHours.toString());
-    setEditBaseDailyRate(log.baseDailyRate.toString());
-    setEditOtHourlyRate(log.otHourlyRate.toString());
-    setEditLateMinutes((log.lateMinutes || 0).toString());
+    setEditOtHours(log.otHours ? log.otHours.toString() : "");
+    setEditBaseDailyRate(log.baseDailyRate ? log.baseDailyRate.toString() : "");
+    setEditOtHourlyRate(log.otHourlyRate ? log.otHourlyRate.toString() : "");
+    setEditLateMinutes(log.lateMinutes ? log.lateMinutes.toString() : "");
     setIsEditOpen(true);
   };
 
   const handleUpdateLog = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingLogId) return;
-
     try {
       await updateWorkLog({
         id: editingLogId as Id<"workLogs">,
         date: editDate,
         isWorked: editIsWorked,
-        otHours: editIsWorked ? Number(editOtHours) || 0 : 0,
-        baseDailyRate: Number(editBaseDailyRate) || 0,
-        otHourlyRate: Number(editOtHourlyRate) || 0,
-        lateMinutes: editIsWorked ? Number(editLateMinutes) || 0 : 0,
+        otHours: editIsWorked ? parseFloat(editOtHours) || 0 : 0,
+        baseDailyRate: editIsWorked ? parseFloat(editBaseDailyRate) || 0 : 0,
+        otHourlyRate: editIsWorked ? parseFloat(editOtHourlyRate) || 0 : 0,
+        lateMinutes: editIsWorked ? parseInt(editLateMinutes) || 0 : 0,
       });
-      toast.success("Log updated successfully.");
+      toast.success("Work log entry updated!");
       setIsEditOpen(false);
       setEditingLogId(null);
-    } catch {
-      toast.error("Failed to update log.");
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to update work log.";
+      toast.error(errorMsg);
     }
   };
 
   const handleDeleteLog = async (id: Id<"workLogs">) => {
-    if (!window.confirm("Are you sure you want to delete this log entry?")) return;
     try {
       await deleteWorkLog({ id });
-      toast.success("Log entry deleted.");
-    } catch {
-      toast.error("Failed to delete log entry.");
+      toast.success("Work log deleted.");
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to delete log entry.";
+      toast.error(errorMsg);
     }
   };
 
@@ -225,16 +268,25 @@ export function PayrollTracker() {
       toast.error("Please select a target wallet account.");
       return;
     }
+    if (!claimStartDate || !claimEndDate) {
+      toast.error("Please select a valid date range.");
+      return;
+    }
+    if (claimAmount <= 0) {
+      toast.error("Selected range has no unclaimed earnings to deposit.");
+      return;
+    }
+
     setIsClaiming(true);
     try {
-      const amountToClaim = claimType === "base" ? stats.netPay : stats.expectedOT;
       await claimPayroll({
-        cutOffPeriod: payrollData?.activeCutOff || "",
+        startDate: claimStartDate,
+        endDate: claimEndDate,
         accountId: claimAccountId as Id<"accounts">,
-        amount: amountToClaim,
+        amount: claimAmount,
         claimType,
       });
-      toast.success(`${claimType === "base" ? "Base Pay" : "Overtime"} claimed successfully!`);
+      toast.success(`Claimed ₱${claimAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} successfully!`);
       setIsClaimOpen(false);
       setClaimAccountId("");
     } catch (err: unknown) {
@@ -258,7 +310,6 @@ export function PayrollTracker() {
     }
   };
 
-  const logs = payrollData?.logs || [];
   const sortedLogs = [...logs].sort((a, b) => b.date.localeCompare(a.date));
 
   // Determine if there is anything to claim
@@ -275,7 +326,7 @@ export function PayrollTracker() {
             Expected Income Tracker
           </h3>
           <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">
-            Active Cut-Off: {payrollData?.activeCutOff || "Unconfigured"}
+            Unclaimed Shifts & Payroll Summary
           </p>
         </div>
         <div className="text-left sm:text-right">
@@ -475,54 +526,117 @@ export function PayrollTracker() {
                 <Receipt className="w-4 h-4" /> Claim Payout
               </Button>
             </DialogTrigger>
-            <DialogContent className="rounded-3xl border-2 max-w-md p-6 bg-white dark:bg-slate-900">
+            <DialogContent className="rounded-3xl border-2 max-w-lg p-6 bg-white dark:bg-slate-900 overflow-y-auto max-h-[85vh]">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-black tracking-tight">
-                  Transfer Payout to Wallet
+                  Claim Payroll Disbursement
                 </DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleClaim} className="space-y-5 pt-3">
+              <form onSubmit={handleClaim} className="space-y-5 pt-2">
+                {/* 1. Date Range Selection */}
                 <div className="space-y-2">
                   <label className="text-xs font-black uppercase tracking-wider text-slate-400">
-                    What are you claiming?
+                    1. Select Target Date Range
                   </label>
                   <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold text-slate-500">From Date</span>
+                      <Input
+                        type="date"
+                        value={claimStartDate}
+                        onChange={(e) => setClaimStartDate(e.target.value)}
+                        className="h-11 rounded-xl font-bold border-2"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold text-slate-500">To Date</span>
+                      <Input
+                        type="date"
+                        value={claimEndDate}
+                        onChange={(e) => setClaimEndDate(e.target.value)}
+                        className="h-11 rounded-xl font-bold border-2"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] font-bold text-indigo-500">
+                    {selectedRangeLogs.length} shift(s) found in selected date range
+                  </p>
+                </div>
+
+                {/* 2. Claim Type Options */}
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-400">
+                    2. Select What to Claim
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
-                      disabled={!hasBaseToClaim}
                       onClick={() => setClaimType("base")}
-                      className={`p-3.5 rounded-2xl border-2 text-left transition-all ${
+                      className={`p-3 rounded-2xl border-2 text-center transition-all ${
                         claimType === "base"
-                          ? "border-emerald-500 bg-emerald-500/10"
-                          : "border-slate-100 hover:border-slate-200"
-                      } ${!hasBaseToClaim ? "opacity-40 cursor-not-allowed" : ""}`}
+                          ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold"
+                          : "border-slate-100 hover:border-slate-200 text-slate-600"
+                      }`}
                     >
-                      <p className="text-[10px] font-black uppercase text-slate-400">Base Salary</p>
-                      <p className="text-lg font-black text-emerald-600 font-mono">
-                        ₱{stats.netPay.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      <p className="text-[10px] font-black uppercase">Base Pay</p>
+                      <p className="text-sm font-black font-mono mt-0.5">
+                        ₱{previewNetBase.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </p>
                     </button>
                     <button
                       type="button"
-                      disabled={!hasOtToClaim}
                       onClick={() => setClaimType("ot")}
-                      className={`p-3.5 rounded-2xl border-2 text-left transition-all ${
+                      className={`p-3 rounded-2xl border-2 text-center transition-all ${
                         claimType === "ot"
-                          ? "border-amber-500 bg-amber-500/10"
-                          : "border-slate-100 hover:border-slate-200"
-                      } ${!hasOtToClaim ? "opacity-40 cursor-not-allowed" : ""}`}
+                          ? "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold"
+                          : "border-slate-100 hover:border-slate-200 text-slate-600"
+                      }`}
                     >
-                      <p className="text-[10px] font-black uppercase text-slate-400">Overtime Pay</p>
-                      <p className="text-lg font-black text-amber-600 font-mono">
-                        ₱{stats.expectedOT.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      <p className="text-[10px] font-black uppercase">Overtime</p>
+                      <p className="text-sm font-black font-mono mt-0.5">
+                        ₱{previewSelectedOT.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setClaimType("both")}
+                      className={`p-3 rounded-2xl border-2 text-center transition-all ${
+                        claimType === "both"
+                          ? "border-indigo-500 bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 font-bold"
+                          : "border-slate-100 hover:border-slate-200 text-slate-600"
+                      }`}
+                    >
+                      <p className="text-[10px] font-black uppercase">Both (All)</p>
+                      <p className="text-sm font-black font-mono mt-0.5">
+                        ₱{(previewNetBase + previewSelectedOT).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </p>
                     </button>
                   </div>
                 </div>
 
+                {/* 3. Live Payout & Remaining Breakdown */}
+                <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border space-y-2 text-xs">
+                  <div className="flex justify-between items-center pb-2 border-b">
+                    <span className="font-extrabold text-slate-700 dark:text-slate-200 uppercase tracking-wider text-[10px]">
+                      Deposit Amount:
+                    </span>
+                    <span className="text-lg font-black text-emerald-600 font-mono">
+                      ₱{claimAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-slate-500 text-[11px]">
+                    <span>Remaining Unclaimed Balance:</span>
+                    <span className="font-bold font-mono text-slate-700 dark:text-slate-300">
+                      ₱{remainingTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4. Target Wallet Selection */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-black uppercase tracking-wider text-slate-400">
-                    Select Target Wallet Account
+                    3. Target Wallet Account
                   </label>
                   <Select value={claimAccountId} onValueChange={setClaimAccountId} required>
                     <SelectTrigger className="h-12 rounded-xl font-bold border-2">
@@ -538,16 +652,12 @@ export function PayrollTracker() {
                   </Select>
                 </div>
 
-                <p className="text-[10px] text-slate-400 italic bg-amber-50 border border-amber-100 p-2.5 rounded-lg leading-relaxed">
-                  Notice: Claiming will mark the select shifts&apos; type in this cutoff as Claimed and record a new deposit under your transaction history.
-                </p>
-
                 <Button
                   type="submit"
-                  disabled={isClaiming || !claimAccountId}
+                  disabled={isClaiming || !claimAccountId || claimAmount <= 0}
                   className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 font-black rounded-xl"
                 >
-                  {isClaiming ? "Depositing..." : "Confirm Deposit"}
+                  {isClaiming ? "Depositing..." : `Confirm Deposit (₱${claimAmount.toLocaleString()})`}
                 </Button>
               </form>
             </DialogContent>
@@ -574,17 +684,6 @@ export function PayrollTracker() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-black uppercase tracking-wider text-slate-400">
-                    Current Cut-off Period
-                  </label>
-                  <Input
-                    placeholder="e.g. May 15 - May 30"
-                    value={currentCutOff}
-                    onChange={(e) => setCurrentCutOff(e.target.value)}
-                    className="h-12 rounded-xl font-bold border-2"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-400">
                     Base Daily Rate (₱)
                   </label>
                   <Input
@@ -594,9 +693,6 @@ export function PayrollTracker() {
                     className="h-12 rounded-xl font-black font-mono border-2"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-black uppercase tracking-wider text-slate-400">
                     OT Rate / Hour (₱)
@@ -608,18 +704,21 @@ export function PayrollTracker() {
                     className="h-12 rounded-xl font-black font-mono border-2"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-400">
-                    Late Deductions Rate (₱/min)
-                  </label>
-                  <Input
-                    type="number"
-                    placeholder="e.g. 2"
-                    value={lateRatePerMin}
-                    onChange={(e) => setLateRatePerMin(e.target.value)}
-                    className="h-12 rounded-xl font-black font-mono border-2"
-                  />
+              </div>
+
+              {/* AUTO-CALCULATED LATE DEDUCTION BANNER */}
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
+                <div>
+                  <p className="font-extrabold text-slate-700 dark:text-slate-200">
+                    Auto Late Deduction Rate
+                  </p>
+                  <p className="text-[10px] text-slate-400">
+                    Computed as Base Daily Rate ÷ 8 hrs ÷ 60 mins
+                  </p>
                 </div>
+                <span className="font-mono font-black text-indigo-600 dark:text-indigo-400 text-sm">
+                  ₱{((parseFloat(baseDailyRate) || 0) / (8 * 60)).toFixed(2)}/min
+                </span>
               </div>
 
               <div className="border-t pt-4 space-y-4">
@@ -691,7 +790,7 @@ export function PayrollTracker() {
 
         {sortedLogs.length === 0 ? (
           <div className="text-center py-6 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
-            <p className="text-xs font-bold text-slate-400">No shifts logged for this active cut-off period.</p>
+            <p className="text-xs font-bold text-slate-400">No unclaimed shifts logged.</p>
           </div>
         ) : (
           <div className="max-h-[220px] overflow-y-auto pr-1 space-y-2.5 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">

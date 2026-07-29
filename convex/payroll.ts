@@ -20,7 +20,7 @@ export const saveSettings = mutation({
   args: {
     baseDailyRate: v.number(),
     otHourlyRate: v.number(),
-    currentCutOff: v.string(),
+    currentCutOff: v.optional(v.string()),
     sssDeduction: v.optional(v.number()),
     philhealthDeduction: v.optional(v.number()),
     pagibigDeduction: v.optional(v.number()),
@@ -85,9 +85,9 @@ function computeStats(logs: WorkLogItem[], settings: PayrollSettingsItem | null)
       expectedBase += log.baseDailyRate;
       const lates = log.lateMinutes || 0;
       totalLatesMinutes += lates;
-      if (settings?.lateRatePerMin) {
-        expectedLateDeductions += lates * settings.lateRatePerMin;
-      }
+      // Late deduction: baseDailyRate / 8 hrs / 60 mins
+      const lateRatePerMin = log.baseDailyRate ? (log.baseDailyRate / (8 * 60)) : (settings?.lateRatePerMin || 0);
+      expectedLateDeductions += lates * lateRatePerMin;
     }
   });
 
@@ -123,7 +123,7 @@ function computeStats(logs: WorkLogItem[], settings: PayrollSettingsItem | null)
   };
 }
 
-// Get logs and compute dynamic stats (supporting current vs next cutoff projections)
+// Get logs and compute dynamic stats
 export const getCutOffStats = query({
   args: {},
   handler: async (ctx) => {
@@ -135,33 +135,38 @@ export const getCutOffStats = query({
       .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
       .unique();
 
-    const activeCutOff = settings?.currentCutOff || "Not Configured";
+    const activeCutOff = settings?.currentCutOff || "Unclaimed";
 
-    // 1. Fetch all user logs
+    // Fetch all user logs
     const allLogs = await ctx.db
       .query("workLogs")
       .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
       .collect();
 
-    // Active/Current cutoff logs (only unclaimed base OR unclaimed OT logs)
-    const currentLogs = allLogs.filter(
-      (log) => log.cutOffPeriod === activeCutOff && (!log.claimed || !log.otClaimed)
+    // Unclaimed shift logs (base unclaimed OR OT unclaimed)
+    const unclaimedLogs = allLogs.filter(
+      (log) => !log.claimed || !log.otClaimed
     );
 
-    // Next/Future cutoff logs
-    const nextLogs = allLogs.filter(
-      (log) => log.cutOffPeriod !== activeCutOff && (!log.claimed || !log.otClaimed)
-    );
+    // Compute stats on unclaimed shifts
+    const currentLogs =
+      activeCutOff !== "Unclaimed"
+        ? unclaimedLogs.filter((log) => !log.cutOffPeriod || log.cutOffPeriod === activeCutOff)
+        : unclaimedLogs;
 
-    // Compute stats
-    const currentStats = computeStats(currentLogs, settings);
+    const nextLogs =
+      activeCutOff !== "Unclaimed"
+        ? unclaimedLogs.filter((log) => log.cutOffPeriod && log.cutOffPeriod !== activeCutOff)
+        : [];
+
+    const stats = computeStats(currentLogs, settings);
     const nextStats = computeStats(nextLogs, settings);
 
     return {
-      logs: currentLogs,
+      logs: unclaimedLogs,
       allLogs,
       settings,
-      stats: currentStats,
+      stats,
       nextStats,
       activeCutOff,
     };
@@ -172,7 +177,7 @@ export const getCutOffStats = query({
 export const addWorkDay = mutation({
   args: {
     date: v.string(),
-    cutOffPeriod: v.string(),
+    cutOffPeriod: v.optional(v.string()),
     baseDailyRate: v.number(),
     isWorked: v.boolean(),
     otHours: v.number(),
@@ -185,6 +190,7 @@ export const addWorkDay = mutation({
 
     await ctx.db.insert("workLogs", {
       userId: identity.subject,
+      cutOffPeriod: args.cutOffPeriod || "",
       ...args,
       claimed: false,
       otClaimed: false,
@@ -235,52 +241,56 @@ export const deleteWorkDay = mutation({
   },
 });
 
-// Claim expected base income or OT separately and deposit it directly to a wallet
+// Claim expected base income, OT, or both within a date range and deposit directly to a wallet
 export const claimPayroll = mutation({
   args: {
-    cutOffPeriod: v.string(),
+    startDate: v.string(),
+    endDate: v.string(),
     accountId: v.id("accounts"),
     amount: v.number(),
-    claimType: v.union(v.literal("base"), v.literal("ot")),
+    claimType: v.union(v.literal("base"), v.literal("ot"), v.literal("both")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthenticated");
 
-    // 1. Find all active logs for this cutoff
+    // Fetch all logs for the user within the date range
     const logs = await ctx.db
       .query("workLogs")
       .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
-      .filter((q) => q.eq(q.field("cutOffPeriod"), args.cutOffPeriod))
       .collect();
 
-    const now = Date.now();
+    const rangeLogs = logs.filter(
+      (log) => log.date >= args.startDate && log.date <= args.endDate
+    );
 
-    if (args.claimType === "base") {
-      const unclaimedBase = logs.filter((l) => !l.claimed);
-      if (unclaimedBase.length === 0) {
-        throw new Error("No unclaimed base pay work logs found.");
+    const now = Date.now();
+    let updatedCount = 0;
+
+    for (const log of rangeLogs) {
+      const updates: { claimed?: boolean; claimedAt?: number; otClaimed?: boolean; otClaimedAt?: number } = {};
+
+      if ((args.claimType === "base" || args.claimType === "both") && !log.claimed) {
+        updates.claimed = true;
+        updates.claimedAt = now;
       }
-      for (const log of unclaimedBase) {
-        await ctx.db.patch(log._id, {
-          claimed: true,
-          claimedAt: now,
-        });
+
+      if ((args.claimType === "ot" || args.claimType === "both") && !log.otClaimed) {
+        updates.otClaimed = true;
+        updates.otClaimedAt = now;
       }
-    } else {
-      const unclaimedOt = logs.filter((l) => !l.otClaimed);
-      if (unclaimedOt.length === 0) {
-        throw new Error("No unclaimed overtime work logs found.");
-      }
-      for (const log of unclaimedOt) {
-        await ctx.db.patch(log._id, {
-          otClaimed: true,
-          otClaimedAt: now,
-        });
+
+      if (Object.keys(updates).length > 0) {
+        await ctx.db.patch(log._id, updates);
+        updatedCount++;
       }
     }
 
-    // 2. Deposit money into target account
+    if (updatedCount === 0) {
+      throw new Error("No unclaimed shift entries found in the selected date range.");
+    }
+
+    // Deposit money into target account
     const account = await ctx.db.get(args.accountId);
     if (!account || account.userId !== identity.subject) {
       throw new Error("Target account not found");
@@ -289,18 +299,21 @@ export const claimPayroll = mutation({
       balance: account.balance + args.amount,
     });
 
-    // 3. Create category link for Payroll/Salary if it exists
+    // Create category link for Payroll/Salary if it exists
     const categoryMatch = await ctx.db
       .query("categories")
       .withIndex("by_userId_and_type", (q) => q.eq("userId", identity.subject).eq("type", "income"))
       .filter((q) => q.eq(q.field("name"), "Salary"))
       .first();
 
-    // 4. Create transaction entry
-    const titleText =
+    const claimLabel =
       args.claimType === "base"
-        ? `Claimed Base Pay Cutoff: ${args.cutOffPeriod}`
-        : `Claimed Overtime Cutoff: ${args.cutOffPeriod}`;
+        ? "Base Pay"
+        : args.claimType === "ot"
+        ? "Overtime Pay"
+        : "Base + OT Pay";
+
+    const titleText = `Claimed Payroll (${claimLabel}): ${args.startDate} to ${args.endDate}`;
 
     await ctx.db.insert("financials", {
       userId: identity.subject,
