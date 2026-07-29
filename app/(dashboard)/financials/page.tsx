@@ -9,17 +9,19 @@ import { CreditTracker } from "@/app/(dashboard)/financials/components/CreditTra
 import { PayrollTracker } from "@/app/(dashboard)/financials/components/payroll-tracker";
 import { SubscriptionTracker } from "@/app/(dashboard)/financials/components/SubscriptionTracker";
 import { LifestyleCostCalculator } from "@/app/(dashboard)/financials/components/LifestyleCostCalculator";
+import { FinancialAnalytics } from "@/app/(dashboard)/financials/components/FinancialAnalytics";
 import { Button } from "@/components/ui/button";
-import { FileText, Wallet, Calendar, ShieldAlert, History, CreditCard, Compass } from "lucide-react";
+import { FileText, Wallet, Calendar, ShieldAlert, History, CreditCard, Compass, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type TabId = "all" | "lifestyle" | "wallets" | "payroll" | "credits" | "subscriptions" | "transactions";
+type TabId = "all" | "analytics" | "lifestyle" | "wallets" | "payroll" | "credits" | "subscriptions" | "transactions";
 
 export default function FinancialsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("all");
 
   const tabs = [
     { id: "all", label: "Show All", icon: FileText },
+    { id: "analytics", label: "Analytics & Charts", icon: BarChart3 },
     { id: "lifestyle", label: "Cost of Living", icon: Compass },
     { id: "wallets", label: "Wallets", icon: Wallet },
     { id: "payroll", label: "Expected Income", icon: Calendar },
@@ -94,7 +96,7 @@ export default function FinancialsPage() {
             activeTab !== "all" && "divide-y-0"
           )}
         >
-          {/* Section 0: Lifestyle & Cost of Living */}
+          {/* Section 1: Lifestyle & Cost of Living */}
           <section
             className={cn(
               "p-4 sm:p-6",
@@ -179,19 +181,37 @@ export default function FinancialsPage() {
         <div
           className={cn(
             "bg-white dark:bg-slate-900 border-t lg:border-t-0 border-[#e0dbd4] dark:border-slate-800 sticky top-0 h-screen flex flex-col",
-            activeTab !== "all" && activeTab !== "transactions" && "hidden lg:flex"
+            activeTab !== "all" && activeTab !== "transactions" && activeTab !== "analytics" && "hidden lg:flex"
           )}
         >
-          <div className="flex items-center justify-between px-4 sm:px-6 pt-5 pb-4 border-b border-[#e0dbd4] dark:border-slate-800 shrink-0">
-            <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e] dark:text-slate-100">
-              <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
-              Transaction History
-            </h2>
-            <span className="text-[10px] font-bold tracking-[0.08em] bg-[#f5f2ed] dark:bg-slate-800 border border-[#e0dbd4] dark:border-slate-700 text-[#888] dark:text-slate-400 px-3 py-1 rounded-md">
-              LAST 3 DAYS / TOP 50
-            </span>
-          </div>
           <div className="flex-1 overflow-y-auto">
+            {/* ANALYTICS & CHARTS SECTION - TOP OF TRANSACTIONS */}
+            <section
+              className={cn(
+                "p-4 sm:p-6 border-b border-[#e0dbd4] dark:border-slate-800 bg-[#f5f2ed]/50 dark:bg-slate-950/50",
+                activeTab !== "all" && activeTab !== "analytics" && "hidden lg:block"
+              )}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e] dark:text-slate-100">
+                  <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
+                  Transaction Analytics &amp; Reports
+                </h2>
+              </div>
+              <FinancialAnalytics />
+            </section>
+
+            {/* TRANSACTION HISTORY HEADER */}
+            <div className="flex items-center justify-between px-4 sm:px-6 pt-5 pb-4 border-b border-[#e0dbd4] dark:border-slate-800 shrink-0 sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm z-30">
+              <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e] dark:text-slate-100">
+                <span className="w-[3px] h-[14px] rounded-sm bg-[#ff6b35]" />
+                Transaction History
+              </h2>
+              <span className="text-[10px] font-bold tracking-[0.08em] bg-[#f5f2ed] dark:bg-slate-800 border border-[#e0dbd4] dark:border-slate-700 text-[#888] dark:text-slate-400 px-3 py-1 rounded-md">
+                LAST 3 DAYS / TOP 50
+              </span>
+            </div>
+
             <TransactionHistory />
           </div>
         </div>
