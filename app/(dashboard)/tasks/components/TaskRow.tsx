@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 interface TaskRowProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   task: any;
   onToggle: (args: { id: Id<"tasks"> }) => void;
   onDelete: (args: { id: Id<"tasks"> }) => void;

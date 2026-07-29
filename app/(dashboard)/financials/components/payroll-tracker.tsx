@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import {
   Calculator,
   Calendar,
@@ -174,6 +175,7 @@ export function PayrollTracker() {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleOpenEdit = (log: any) => {
     setEditingLogId(log._id);
     setEditDate(log.date);
@@ -191,7 +193,7 @@ export function PayrollTracker() {
 
     try {
       await updateWorkLog({
-        id: editingLogId as any,
+        id: editingLogId as Id<"workLogs">,
         date: editDate,
         isWorked: editIsWorked,
         otHours: editIsWorked ? Number(editOtHours) || 0 : 0,
@@ -207,7 +209,7 @@ export function PayrollTracker() {
     }
   };
 
-  const handleDeleteLog = async (id: any) => {
+  const handleDeleteLog = async (id: Id<"workLogs">) => {
     if (!window.confirm("Are you sure you want to delete this log entry?")) return;
     try {
       await deleteWorkLog({ id });
@@ -228,15 +230,16 @@ export function PayrollTracker() {
       const amountToClaim = claimType === "base" ? stats.netPay : stats.expectedOT;
       await claimPayroll({
         cutOffPeriod: payrollData?.activeCutOff || "",
-        accountId: claimAccountId as any,
+        accountId: claimAccountId as Id<"accounts">,
         amount: amountToClaim,
         claimType,
       });
       toast.success(`${claimType === "base" ? "Base Pay" : "Overtime"} claimed successfully!`);
       setIsClaimOpen(false);
       setClaimAccountId("");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to claim expected income.");
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to claim expected income.";
+      toast.error(errorMsg);
     } finally {
       setIsClaiming(false);
     }
@@ -536,7 +539,7 @@ export function PayrollTracker() {
                 </div>
 
                 <p className="text-[10px] text-slate-400 italic bg-amber-50 border border-amber-100 p-2.5 rounded-lg leading-relaxed">
-                  Notice: Claiming will mark the select shifts' type in this cutoff as Claimed and record a new deposit under your transaction history.
+                  Notice: Claiming will mark the select shifts&apos; type in this cutoff as Claimed and record a new deposit under your transaction history.
                 </p>
 
                 <Button

@@ -47,8 +47,26 @@ export const saveSettings = mutation({
   },
 });
 
+interface WorkLogItem {
+  isWorked: boolean;
+  baseDailyRate: number;
+  otHours: number;
+  otHourlyRate: number;
+  lateMinutes?: number;
+  claimed?: boolean;
+  otClaimed?: boolean;
+}
+
+interface PayrollSettingsItem {
+  lateRatePerMin?: number;
+  sssDeduction?: number;
+  philhealthDeduction?: number;
+  pagibigDeduction?: number;
+  taxRate?: number;
+}
+
 // Helper to compute stats for a list of work logs
-function computeStats(logs: any[], settings: any) {
+function computeStats(logs: WorkLogItem[], settings: PayrollSettingsItem | null) {
   let daysWorked = 0;
   let expectedBase = 0;
   let expectedOT = 0;

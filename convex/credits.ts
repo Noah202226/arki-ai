@@ -145,7 +145,7 @@ export const getCreditSummary = query({
       const actualDueDay = Math.min(dayOfMonth, lastDayOfCurrentMonth);
 
       // 2. Kalkulahin ang Next Due Date
-      let nextDueDate = new Date(currentYear, currentMonth, actualDueDay);
+      const nextDueDate = new Date(currentYear, currentMonth, actualDueDay);
 
       // 💡 Kung ang credit ay bagong gawa ngayong kasalukuyang buwan (o bayad na ngayong buwan),
       // ang unang hulog/due date ay magsisimula sa susunod na buwan (next month).
@@ -198,12 +198,23 @@ export const updateCredit = mutation({
     totalAmount: v.number(),
     interest: v.number(),
     monthlyInstallment: v.number(),
+    dueDate: v.optional(v.number()),
+    category: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    const existing = await ctx.db.get(args.id);
+    if (!existing || existing.userId !== identity.subject) {
+      throw new Error("Unauthorized");
+    }
+
     const { id, ...fields } = args;
     await ctx.db.patch(id, fields);
   },
 });
+
 
 // --- DELETE: Remove a credit record ---
 export const deleteCredit = mutation({

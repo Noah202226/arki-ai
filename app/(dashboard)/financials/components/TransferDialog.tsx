@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
-import { Loader2, ArrowRightLeft, Building, Wallet, ChevronRight } from "lucide-react";
+import { Loader2, ArrowRightLeft, Building, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -87,8 +87,9 @@ export function TransferDialog({
       setToAccountId("");
       setIsOpen(false);
       onSuccess?.();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to transfer funds");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to transfer funds";
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }

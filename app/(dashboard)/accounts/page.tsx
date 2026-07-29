@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Wallet, Landmark, CreditCard } from "lucide-react";
+import { Plus, Wallet, Landmark } from "lucide-react";
 
 export default function AccountsPage() {
   return (

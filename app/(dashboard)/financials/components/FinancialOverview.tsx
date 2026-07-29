@@ -2,7 +2,6 @@
 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   CalendarClock,
   TrendingUp,
@@ -10,7 +9,6 @@ import {
   Loader2,
   Wallet,
   Info,
-  ArrowUpRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {

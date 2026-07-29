@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
 
@@ -38,5 +38,5 @@ export function useDailyRoutineReset() {
           console.error("[Arki] Failed to reset routines:", err);
         });
     }
-  }, [user?.id]);
+  }, [user?.id, resetRoutines]);
 }

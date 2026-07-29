@@ -1,19 +1,17 @@
-const withPWA = require("@ducanh2912/next-pwa").default({
+import withPWAInit from "@ducanh2912/next-pwa";
+
+const withPWA = withPWAInit({
   dest: "public",
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  swMinify: true,
   disable: process.env.NODE_ENV === "development",
   workboxOptions: {
     disableDevLogs: true,
   },
 });
 
-module.exports = withPWA({
-  // Your Next.js config
-  experimental: {
-    turbopack: {},
-  },
+export default withPWA({
   devIndicators: false,
 });
+

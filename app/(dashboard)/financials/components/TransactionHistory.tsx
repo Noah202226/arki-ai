@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState } from "react";
 import { useMutation, useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { format, isToday, isYesterday } from "date-fns";
 import { toast } from "sonner";
 import {
@@ -33,7 +34,7 @@ export function TransactionHistory() {
   const categories = useQuery(api.categories.getCategories, {});
   const removeTransaction = useMutation(api.financials.softDeleteTransaction);
 
-  const [txToDelete, setTxToDelete] = useState<{ id: any; title: string } | null>(null);
+  const [txToDelete, setTxToDelete] = useState<{ id: Id<"financials">; title: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Only show transactions from the last 3 days on the initial visible set
@@ -87,19 +88,12 @@ export function TransactionHistory() {
       await removeTransaction({ id: txToDelete.id });
       toast.success("Transaction voided.");
       setTxToDelete(null);
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete transaction.");
     } finally {
       setIsDeleting(false);
     }
   };
-
-  const formatPHP = (amount: number) =>
-    new Intl.NumberFormat("en-PH", {
-      style: "currency",
-      currency: "PHP",
-      minimumFractionDigits: 2,
-    }).format(amount);
 
   const groupedTransactions = (displayTransactions ?? []).reduce(
     (groups, tx) => {

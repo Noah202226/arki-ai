@@ -12,8 +12,9 @@ import {
   Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Id } from "@/convex/_generated/dataModel";
 
-export function AccountFlow({ accountId }: { accountId: any }) {
+export function AccountFlow({ accountId }: { accountId: Id<"accounts"> }) {
   const transactions = useQuery(api.financials.getTransactionsByAccount, {
     accountId,
   });

@@ -16,15 +16,12 @@ import {
 
 import {
   CreditCard,
-  Calendar,
   MoreVertical,
   Trash2,
   Edit2,
-  ChevronDown,
   History,
   TrendingDown,
   AlertCircle,
-  PlusCircle,
   Plus,
   Search,
   X,
@@ -39,7 +36,6 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { AddTransactionDialog } from "./AddTransactionDialog";
 import { useState, useMemo, useDeferredValue } from "react";
 import { EditCreditDialog } from "./EditCreditDialog";
 import { format } from "date-fns";
@@ -53,6 +49,7 @@ export function CreditTracker() {
   const removeCredit = useMutation(api.credits.deleteCredit);
   const archive = useMutation(api.credits.archiveCredit);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedCredit, setSelectedCredit] = useState<any>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -596,7 +593,7 @@ export function CreditTracker() {
 
 // Transaction Flow component (pwedeng i-keep sa parehong file o i-separate)
 function CreditTransactionFlow({
-  creditorName,
+  creditorName: _creditorName,
   creditId,
 }: {
   creditorName: string;

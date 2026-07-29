@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 
 // Shadcn UI
 import { Button } from "@/components/ui/button";
@@ -112,9 +113,9 @@ export function AddTransactionDialog() {
         title,
         amount: Number(amount),
         type: finalType,
-        categoryId: categoryId as any,
-        accountId: accountId as any,
-        creditId: (initialData.creditId as any) || undefined,
+        categoryId: categoryId as Id<"categories">,
+        accountId: accountId as Id<"accounts">,
+        creditId: (initialData.creditId as Id<"credits">) || undefined,
         date: date.getTime(),
       });
 

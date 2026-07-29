@@ -1,8 +1,8 @@
-import { Plus } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 import { TaskRow } from "./TaskRow";
 
 interface ObjectivesListProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tasks: any[];
   completedCount: number;
   onToggle: (args: { id: Id<"tasks"> }) => void;

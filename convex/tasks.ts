@@ -73,7 +73,7 @@ export const toggle = mutation({
     }
 
     const newIsCompleted = !task.isCompleted;
-    const patchData: any = { isCompleted: newIsCompleted };
+    const patchData: { isCompleted: boolean; lastCompleted?: number } = { isCompleted: newIsCompleted };
 
     // Logic: If it's a routine and we are marking it as "Done",
     // we update the lastCompleted timestamp to NOW.

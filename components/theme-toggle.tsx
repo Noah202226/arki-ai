@@ -10,7 +10,7 @@ interface ThemeToggleProps {
   className?: string;
 }
 
-export function ThemeToggle({ variant = "buttons", className }: ThemeToggleProps) {
+export function ThemeToggle({ variant: _variant = "buttons", className }: ThemeToggleProps) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
 

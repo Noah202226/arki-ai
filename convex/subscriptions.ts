@@ -72,11 +72,24 @@ export const getSubscriptionSummary = query({
 
     const categories = await ctx.db
       .query("categories")
-      .withIndex("by_userId_and_type", (q) => q.eq("userId", identity.subject))
+      .withIndex("by_userId_and_type", (q) =>
+        q.eq("userId", identity.subject).eq("type", "expense")
+      )
       .collect();
 
+    // Also pull income-type categories in case any subscription was linked to one
+    const incomeCategories = await ctx.db
+      .query("categories")
+      .withIndex("by_userId_and_type", (q) =>
+        q.eq("userId", identity.subject).eq("type", "income")
+      )
+      .collect();
+
+    const allCategories = [...categories, ...incomeCategories];
+
     const accountMap = new Map(accounts.map((a) => [a._id.toString(), a]));
-    const categoryMap = new Map(categories.map((c) => [c._id.toString(), c]));
+    const categoryMap = new Map(allCategories.map((c) => [c._id.toString(), c]));
+
 
     const now = Date.now();
     const sevenDaysFromNow = now + 7 * 24 * 60 * 60 * 1000;

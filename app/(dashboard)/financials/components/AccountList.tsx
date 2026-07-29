@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import {
   Wallet,
@@ -111,6 +112,7 @@ export function AccountList() {
   const creditSummary = useQuery(api.credits.getCreditSummary);
   const removeAccount = useMutation(api.accounts.removeAccount);
   const toggleSavings = useMutation(api.accounts.toggleSavings);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
 
   if (accounts === undefined || creditSummary === undefined) {
@@ -134,7 +136,7 @@ export function AccountList() {
   const earningsTarget = Math.max(0, totalDebt - totalAssets);
   const netPosition = totalAssets - totalDebt;
 
-  const handleDelete = async (id: any) => {
+  const handleDelete = async (id: Id<"accounts">) => {
     if (
       confirm(
         "Are you sure? This will remove the account from your total assets.",
@@ -144,7 +146,7 @@ export function AccountList() {
     }
   };
 
-  const handleToggleSavings = async (id: any, currentStatus: boolean) => {
+  const handleToggleSavings = async (id: Id<"accounts">, currentStatus: boolean) => {
     await toggleSavings({ id, isSavings: !currentStatus });
   };
 
