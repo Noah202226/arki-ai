@@ -16,6 +16,7 @@ import {
   Trash2,
   Receipt,
   TrendingUp,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -648,11 +649,10 @@ export function PayrollTracker() {
                     <button
                       type="button"
                       onClick={() => setClaimType("base")}
-                      className={`p-3 rounded-2xl border-2 text-center transition-all ${
-                        claimType === "base"
+                      className={`p-3 rounded-2xl border-2 text-center transition-all ${claimType === "base"
                           ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold"
                           : "border-slate-100 hover:border-slate-200 text-slate-600"
-                      }`}
+                        }`}
                     >
                       <p className="text-[10px] font-black uppercase">Base Pay</p>
                       <p className="text-sm font-black font-mono mt-0.5">
@@ -662,11 +662,10 @@ export function PayrollTracker() {
                     <button
                       type="button"
                       onClick={() => setClaimType("ot")}
-                      className={`p-3 rounded-2xl border-2 text-center transition-all ${
-                        claimType === "ot"
+                      className={`p-3 rounded-2xl border-2 text-center transition-all ${claimType === "ot"
                           ? "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold"
                           : "border-slate-100 hover:border-slate-200 text-slate-600"
-                      }`}
+                        }`}
                     >
                       <p className="text-[10px] font-black uppercase">Overtime</p>
                       <p className="text-sm font-black font-mono mt-0.5">
@@ -676,11 +675,10 @@ export function PayrollTracker() {
                     <button
                       type="button"
                       onClick={() => setClaimType("both")}
-                      className={`p-3 rounded-2xl border-2 text-center transition-all ${
-                        claimType === "both"
+                      className={`p-3 rounded-2xl border-2 text-center transition-all ${claimType === "both"
                           ? "border-indigo-500 bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 font-bold"
                           : "border-slate-100 hover:border-slate-200 text-slate-600"
-                      }`}
+                        }`}
                     >
                       <p className="text-[10px] font-black uppercase">Both (All)</p>
                       <p className="text-sm font-black font-mono mt-0.5">
@@ -960,21 +958,19 @@ export function PayrollTracker() {
                           </span>
                         )}
                         <span
-                          className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                            log.isWorked
+                          className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${log.isWorked
                               ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400"
                               : "bg-slate-100 text-slate-500 dark:bg-slate-900 dark:text-slate-400"
-                          }`}
+                            }`}
                         >
                           {log.isWorked ? "Worked" : "Off Day"}
                         </span>
                         {log.isWorked && log.otHours > 0 && (
                           <span
-                            className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                              log.otClaimed
+                            className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${log.otClaimed
                                 ? "bg-slate-200 text-slate-500 dark:bg-slate-800"
                                 : "bg-amber-50 text-amber-500 dark:bg-amber-950/20"
-                            }`}
+                              }`}
                           >
                             +{log.otHours}h OT {log.otClaimed ? "(Claimed)" : ""}
                           </span>
@@ -1049,7 +1045,7 @@ export function PayrollTracker() {
                 className="h-12 rounded-xl font-bold border-2"
               />
             </div>
-            
+
             <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border">
               <Checkbox
                 id="edit-worked"
@@ -1096,7 +1092,7 @@ export function PayrollTracker() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <label className="text-xs font-black uppercase tracking-wider text-slate-400">
