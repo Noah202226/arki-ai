@@ -74,11 +74,13 @@ export function NotificationCenter() {
     if (typeof window !== "undefined" && "Notification" in window) {
       if (Notification.permission === "granted") {
         setHasBrowserPermission(true);
-        // Automatically sync device push registration with Convex
-        requestAndRegisterPush(savePushMutation).catch(() => {});
+        // Automatically sync device push registration with Convex when authenticated
+        if (pushStatus !== undefined) {
+          requestAndRegisterPush(savePushMutation).catch(() => {});
+        }
       }
     }
-  }, [savePushMutation]);
+  }, [savePushMutation, pushStatus]);
 
   const isSubscribed = pushStatus?.isSubscribed || hasBrowserPermission;
 
