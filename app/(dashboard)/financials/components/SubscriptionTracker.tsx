@@ -98,6 +98,7 @@ export function SubscriptionTracker() {
 
   const formatFrequency = (freq: string) => {
     if (freq === "weekly") return "wk";
+    if (freq === "15days") return "15d";
     if (freq === "monthly") return "mo";
     if (freq === "yearly") return "yr";
     return freq;
@@ -162,13 +163,16 @@ export function SubscriptionTracker() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="bg-slate-900 dark:bg-slate-800/80 text-white border border-slate-800 dark:border-slate-700/50 shadow-md overflow-hidden">
-          <CardContent className="p-4 flex items-center justify-between">
+          <CardContent className="p-3.5 flex items-center justify-between">
             <div className="space-y-1">
-              <p className="text-slate-400 text-[9px] uppercase tracking-wider font-bold">Monthly Client Retainers</p>
-              <p className="text-xl font-black font-mono text-emerald-400">
+              <p className="text-slate-400 text-[9px] uppercase tracking-wider font-bold">Monthly Retainers</p>
+              <p className="text-lg font-black font-mono text-emerald-400">
                 +₱{Math.round(summary.totalMonthlyIncome || 0).toLocaleString()}
+              </p>
+              <p className="text-[10px] text-emerald-400/80 font-mono font-medium">
+                +₱{(summary.totalDailyIncome || 0).toFixed(2)}/day
               </p>
             </div>
             <div className="bg-emerald-500/10 p-2 rounded-xl text-emerald-400">
@@ -178,15 +182,52 @@ export function SubscriptionTracker() {
         </Card>
 
         <Card className="bg-slate-900 dark:bg-slate-800/80 text-white border border-slate-800 dark:border-slate-700/50 shadow-md overflow-hidden">
-          <CardContent className="p-4 flex items-center justify-between">
+          <CardContent className="p-3.5 flex items-center justify-between">
             <div className="space-y-1">
-              <p className="text-slate-400 text-[9px] uppercase tracking-wider font-bold">Monthly Recurring Expenses</p>
-              <p className="text-xl font-black font-mono text-[#ff6b35]">
+              <p className="text-slate-400 text-[9px] uppercase tracking-wider font-bold">Monthly Expenses</p>
+              <p className="text-lg font-black font-mono text-[#ff6b35]">
                 -₱{Math.round(summary.totalMonthlyCost).toLocaleString()}
+              </p>
+              <p className="text-[10px] text-[#ff6b35]/80 font-mono font-medium">
+                -₱{(summary.totalDailyCost || 0).toFixed(2)}/day
               </p>
             </div>
             <div className="bg-[#ff6b35]/10 p-2 rounded-xl text-[#ff6b35]">
               <Clock className="w-4 h-4" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-slate-900 dark:bg-slate-800/80 text-white border border-slate-800 dark:border-slate-700/50 shadow-md overflow-hidden">
+          <CardContent className="p-3.5 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-slate-400 text-[9px] uppercase tracking-wider font-bold">Net Recurring Flow</p>
+              <p className={cn("text-lg font-black font-mono", (summary.netMonthlyBalance || 0) >= 0 ? "text-emerald-400" : "text-rose-400")}>
+                {(summary.netMonthlyBalance || 0) >= 0 ? "+" : ""}₱{Math.round(summary.netMonthlyBalance || 0).toLocaleString()}
+              </p>
+              <p className="text-[10px] text-slate-400 font-mono font-medium">
+                Net ₱{(summary.netDailyBalance || 0).toFixed(2)}/day
+              </p>
+            </div>
+            <div className={cn("p-2 rounded-xl", (summary.netMonthlyBalance || 0) >= 0 ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400")}>
+              <Sparkles className="w-4 h-4" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-slate-900 dark:bg-slate-800/80 text-white border border-slate-800 dark:border-slate-700/50 shadow-md overflow-hidden">
+          <CardContent className="p-3.5 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-slate-400 text-[9px] uppercase tracking-wider font-bold">Daily Burn Rate</p>
+              <p className="text-lg font-black font-mono text-amber-400">
+                ₱{(summary.totalDailyCost || 0).toFixed(2)}/day
+              </p>
+              <p className="text-[10px] text-slate-400 font-mono font-medium">
+                ₱{Math.round(summary.totalYearlyCost || 0).toLocaleString()}/yr
+              </p>
+            </div>
+            <div className="bg-amber-500/10 p-2 rounded-xl text-amber-400">
+              <CreditCard className="w-4 h-4" />
             </div>
           </CardContent>
         </Card>
@@ -206,6 +247,19 @@ export function SubscriptionTracker() {
           {filteredItems.map((sub) => {
             const isPaying = payingId === sub._id;
             const isIncome = sub.type === "income";
+
+            const daysRemaining = sub.daysRemaining;
+            let countdownText = "";
+            if (sub.isOverdue) {
+              const overdueDays = Math.abs(daysRemaining);
+              countdownText = `Overdue by ${overdueDays} day${overdueDays > 1 ? "s" : ""}`;
+            } else if (daysRemaining === 0) {
+              countdownText = "Due today";
+            } else if (daysRemaining === 1) {
+              countdownText = "Due tomorrow";
+            } else if (daysRemaining > 1) {
+              countdownText = `In ${daysRemaining} days`;
+            }
 
             return (
               <div
@@ -250,14 +304,25 @@ export function SubscriptionTracker() {
                           Expense
                         </Badge>
                       )}
+
+                      {/* Daily Rate Pill */}
+                      <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md">
+                        ₱{sub.dailyContribution.toFixed(2)}/day
+                      </Badge>
+
                       {sub.isOverdue && (
                         <Badge variant="destructive" className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md">
-                          Overdue
+                          {countdownText}
                         </Badge>
                       )}
-                      {sub.isDueSoon && (
+                      {sub.isDueSoon && !sub.isOverdue && (
                         <Badge className="bg-amber-500 text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md">
-                          Due Soon
+                          {countdownText}
+                        </Badge>
+                      )}
+                      {!sub.isDueSoon && !sub.isOverdue && countdownText && (
+                        <Badge variant="outline" className="text-slate-400 text-[9px] font-medium px-1.5 py-0.5 rounded-md">
+                          {countdownText}
                         </Badge>
                       )}
                     </div>

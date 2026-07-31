@@ -143,7 +143,13 @@ export default defineSchema({
     userId: v.string(),
     name: v.string(),
     amount: v.number(),
-    frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
+    frequency: v.union(
+      v.literal("daily"),
+      v.literal("weekly"),
+      v.literal("15days"),
+      v.literal("monthly"),
+      v.literal("yearly")
+    ),
     nextBillingDate: v.number(), // Unix timestamp (millisecond representation) of next payment
     accountId: v.id("accounts"), // Account from which this subscription is paid or deposited
     categoryId: v.id("categories"), // Category, e.g. "Software", "Salary", "Freelance"

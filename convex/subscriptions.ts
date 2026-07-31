@@ -2,12 +2,14 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 // Helper to calculate the next billing date
-function calculateNextBillingDate(current: number, frequency: "daily" | "weekly" | "monthly" | "yearly"): number {
+function calculateNextBillingDate(current: number, frequency: "daily" | "weekly" | "15days" | "monthly" | "yearly"): number {
   const date = new Date(current);
   if (frequency === "daily") {
     date.setDate(date.getDate() + 1);
   } else if (frequency === "weekly") {
     date.setDate(date.getDate() + 7);
+  } else if (frequency === "15days") {
+    date.setDate(date.getDate() + 15);
   } else if (frequency === "monthly") {
     date.setMonth(date.getMonth() + 1);
   } else if (frequency === "yearly") {
@@ -21,7 +23,7 @@ export const createSubscription = mutation({
   args: {
     name: v.string(),
     amount: v.number(),
-    frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
+    frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("15days"), v.literal("monthly"), v.literal("yearly")),
     nextBillingDate: v.number(),
     accountId: v.id("accounts"),
     categoryId: v.id("categories"),
@@ -99,8 +101,10 @@ export const getSubscriptionSummary = query({
 
     let totalMonthlyCost = 0;
     let totalYearlyCost = 0;
+    let totalDailyCost = 0;
     let totalMonthlyIncome = 0;
     let totalYearlyIncome = 0;
+    let totalDailyIncome = 0;
 
     const items = subscriptions.map((sub) => {
       const account = accountMap.get(sub.accountId.toString());
@@ -110,33 +114,45 @@ export const getSubscriptionSummary = query({
       // Normalize amounts to compute total recurring rates
       let monthlyContribution = 0;
       let yearlyContribution = 0;
+      let dailyContribution = 0;
 
       if (sub.status === "active") {
         if (sub.frequency === "daily") {
+          dailyContribution = sub.amount;
           monthlyContribution = sub.amount * 30;
           yearlyContribution = sub.amount * 365;
         } else if (sub.frequency === "weekly") {
+          dailyContribution = sub.amount / 7;
           monthlyContribution = sub.amount * (52 / 12);
           yearlyContribution = sub.amount * 52;
+        } else if (sub.frequency === "15days") {
+          dailyContribution = sub.amount / 15;
+          monthlyContribution = sub.amount * 2;
+          yearlyContribution = sub.amount * 24;
         } else if (sub.frequency === "monthly") {
+          dailyContribution = sub.amount / 30;
           monthlyContribution = sub.amount;
           yearlyContribution = sub.amount * 12;
         } else if (sub.frequency === "yearly") {
+          dailyContribution = sub.amount / 365;
           monthlyContribution = sub.amount / 12;
           yearlyContribution = sub.amount;
         }
       }
 
       if (subType === "income") {
+        totalDailyIncome += dailyContribution;
         totalMonthlyIncome += monthlyContribution;
         totalYearlyIncome += yearlyContribution;
       } else {
+        totalDailyCost += dailyContribution;
         totalMonthlyCost += monthlyContribution;
         totalYearlyCost += yearlyContribution;
       }
 
       const isDueSoon = sub.status === "active" && sub.nextBillingDate <= sevenDaysFromNow && sub.nextBillingDate >= now;
       const isOverdue = sub.status === "active" && sub.nextBillingDate < now;
+      const daysRemaining = Math.ceil((sub.nextBillingDate - now) / (1000 * 60 * 60 * 24));
 
       return {
         ...sub,
@@ -145,6 +161,10 @@ export const getSubscriptionSummary = query({
         categoryName: category?.name || "Unknown Category",
         categoryColor: category?.color || "#94a3b8",
         categoryIcon: category?.icon,
+        dailyContribution,
+        monthlyContribution,
+        yearlyContribution,
+        daysRemaining,
         isDueSoon,
         isOverdue,
       };
@@ -166,10 +186,14 @@ export const getSubscriptionSummary = query({
 
     return {
       items,
+      totalDailyCost,
       totalMonthlyCost,
       totalYearlyCost,
+      totalDailyIncome,
       totalMonthlyIncome,
       totalYearlyIncome,
+      netMonthlyBalance: totalMonthlyIncome - totalMonthlyCost,
+      netDailyBalance: totalDailyIncome - totalDailyCost,
     };
   },
 });
@@ -180,7 +204,7 @@ export const updateSubscription = mutation({
     id: v.id("subscriptions"),
     name: v.string(),
     amount: v.number(),
-    frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("yearly")),
+    frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("15days"), v.literal("monthly"), v.literal("yearly")),
     nextBillingDate: v.number(),
     accountId: v.id("accounts"),
     categoryId: v.id("categories"),
