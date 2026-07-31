@@ -196,4 +196,32 @@ export default defineSchema({
     category: v.optional(v.string()),
     isCompleted: v.optional(v.boolean()),
   }).index("by_userId", ["userId"]),
+
+  // 7. NOTIFICATIONS TABLE (Realtime alert center & reminders)
+  notifications: defineTable({
+    userId: v.string(),
+    title: v.string(),
+    message: v.string(),
+    type: v.union(v.literal("subscription"), v.literal("task"), v.literal("credit"), v.literal("system")),
+    severity: v.optional(v.union(v.literal("info"), v.literal("warning"), v.literal("error"))),
+    isRead: v.boolean(),
+    linkUrl: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_read", ["userId", "isRead"]),
+
+  // 8. PWA PUSH SUBSCRIPTIONS TABLE (For Android Status Bar & Lockscreen alerts)
+  pushSubscriptions: defineTable({
+    userId: v.string(),
+    endpoint: v.string(),
+    keys: v.object({
+      p256dh: v.string(),
+      auth: v.string(),
+    }),
+    userAgent: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_endpoint", ["endpoint"]),
 });

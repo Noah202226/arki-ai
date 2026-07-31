@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Wallet, CheckSquare, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserNavButton } from "./components/user-nav-button";
+import { NotificationCenter } from "@/components/NotificationCenter";
 
 export default function DashboardLayout({
   children,
@@ -20,23 +21,40 @@ export default function DashboardLayout({
   ];
 
   return (
-    <div className="flex min-h-screen bg-[#fcfaf7] dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased font-sans transition-colors duration-200">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#fcfaf7] dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased font-sans transition-colors duration-200">
+      {/* MOBILE TOP BAR */}
+      <div className="md:hidden sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-[#e5dec9]/40 dark:border-slate-800/80 px-4 py-3 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-[#ff6b35] rounded-xl flex items-center justify-center text-white font-black text-base shadow-sm">
+            A
+          </div>
+          <span className="text-lg font-extrabold text-[#1a1a2e] dark:text-slate-50 tracking-tight">
+            Arki<span className="text-[#ff6b35]">.</span>
+          </span>
+        </div>
+        <NotificationCenter />
+      </div>
+
       {/* SIDEBAR - Desktop */}
       <aside className="hidden md:flex w-72 flex-col bg-white dark:bg-slate-900 border-r border-[#e5dec9]/40 dark:border-slate-800/80 p-6 shrink-0 justify-between h-screen sticky top-0 overflow-y-auto">
         <div className="flex flex-col">
-          {/* Logo */}
-          <div className="flex items-center gap-3 mb-10 px-2">
-            <div className="w-9 h-9 bg-[#ff6b35] rounded-xl flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-[#ff6b35]/25">
-              A
+          {/* Logo & Notification Bell */}
+          <div className="flex items-center justify-between mb-10 px-1">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-[#ff6b35] rounded-xl flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-[#ff6b35]/25">
+                A
+              </div>
+              <div>
+                <span className="text-xl font-extrabold text-[#1a1a2e] dark:text-slate-50 tracking-tight">
+                  Arki<span className="text-[#ff6b35]">.</span>
+                </span>
+                <span className="block text-[9px] font-bold tracking-[0.1em] text-slate-400 dark:text-slate-500 uppercase">
+                  Assistant Hub
+                </span>
+              </div>
             </div>
-            <div>
-              <span className="text-xl font-extrabold text-[#1a1a2e] dark:text-slate-50 tracking-tight">
-                Arki<span className="text-[#ff6b35]">.</span>
-              </span>
-              <span className="block text-[9px] font-bold tracking-[0.1em] text-slate-400 dark:text-slate-500 uppercase">
-                Assistant Hub
-              </span>
-            </div>
+
+            <NotificationCenter />
           </div>
 
           {/* Navigation Links */}
