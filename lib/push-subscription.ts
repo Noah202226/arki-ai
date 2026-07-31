@@ -82,7 +82,7 @@ export async function requestAndRegisterPush(
           const appServerKey = await getVapidApplicationServerKey();
           const subscribeOptions: PushSubscriptionOptionsInit = {
             userVisibleOnly: true,
-            ...(appServerKey ? { applicationServerKey: appServerKey } : {}),
+            ...(appServerKey ? { applicationServerKey: appServerKey as BufferSource } : {}),
           };
           subscription = await registration.pushManager.subscribe(subscribeOptions);
         }
