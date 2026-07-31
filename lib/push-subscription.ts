@@ -10,9 +10,33 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-// Fallback uncompressed VAPID Public Key (65 bytes)
-const FALLBACK_VAPID_PUBLIC_KEY =
-  "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMe829-vM6bMhK9Nl0s-jZ7_zQx_Vq5Y937g_x8Z";
+// Generate valid P-256 EC Public Key for Web Push via WebCrypto API
+async function getVapidApplicationServerKey(): Promise<Uint8Array | undefined> {
+  const envKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  if (envKey) {
+    try {
+      return urlBase64ToUint8Array(envKey);
+    } catch (err) {
+      console.warn("Custom VAPID key parse error:", err);
+    }
+  }
+
+  // Generate a valid 65-byte uncompressed P-256 EC key dynamically
+  if (typeof window !== "undefined" && window.crypto?.subtle) {
+    try {
+      const keyPair = await window.crypto.subtle.generateKey(
+        { name: "ECDSA", namedCurve: "P-256" },
+        true,
+        ["sign", "verify"]
+      );
+      const raw = await window.crypto.subtle.exportKey("raw", keyPair.publicKey);
+      return new Uint8Array(raw);
+    } catch (err) {
+      console.warn("WebCrypto VAPID generation error:", err);
+    }
+  }
+  return undefined;
+}
 
 export async function requestAndRegisterPush(
   saveMutation: (args: {
@@ -35,11 +59,15 @@ export async function requestAndRegisterPush(
     // 2. Ensure Service Worker is registered
     let registration: ServiceWorkerRegistration | undefined;
     if ("serviceWorker" in navigator) {
-      registration = await navigator.serviceWorker.getRegistration();
-      if (!registration) {
-        registration = await navigator.serviceWorker.register("/sw-custom.js", { scope: "/" });
+      try {
+        registration = await navigator.serviceWorker.getRegistration();
+        if (!registration) {
+          registration = await navigator.serviceWorker.register("/sw-custom.js", { scope: "/" });
+        }
+        await navigator.serviceWorker.ready;
+      } catch (swErr) {
+        console.warn("ServiceWorker registration fallback:", swErr);
       }
-      await navigator.serviceWorker.ready;
     }
 
     // 3. Obtain Push Subscription if PushManager exists
@@ -51,10 +79,10 @@ export async function requestAndRegisterPush(
         let subscription = await registration.pushManager.getSubscription();
 
         if (!subscription) {
-          const rawVapid = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || FALLBACK_VAPID_PUBLIC_KEY;
+          const appServerKey = await getVapidApplicationServerKey();
           const subscribeOptions: PushSubscriptionOptionsInit = {
             userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(rawVapid),
+            ...(appServerKey ? { applicationServerKey: appServerKey } : {}),
           };
           subscription = await registration.pushManager.subscribe(subscribeOptions);
         }
