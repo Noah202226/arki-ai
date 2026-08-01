@@ -28,7 +28,10 @@ import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
 import { requestAndRegisterPush } from "@/lib/push-subscription";
 
+import { useUser } from "@clerk/nextjs";
+
 export function NotificationCenter() {
+  const { isSignedIn, isLoaded: isAuthLoaded } = useUser();
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "subscription" | "credit" | "task">("all");
 
@@ -62,6 +65,9 @@ export function NotificationCenter() {
     if (type === "task") {
       return <CheckSquare className="w-4 h-4 text-emerald-500" />;
     }
+    if (type === "push" || type === "system") {
+      return <Sparkles className="w-4 h-4 text-purple-500" />;
+    }
     return <Info className="w-4 h-4 text-indigo-500" />;
   };
 
@@ -75,12 +81,12 @@ export function NotificationCenter() {
       if (Notification.permission === "granted") {
         setHasBrowserPermission(true);
         // Automatically sync device push registration with Convex when authenticated
-        if (pushStatus !== undefined) {
+        if (isAuthLoaded && isSignedIn) {
           requestAndRegisterPush(savePushMutation).catch(() => {});
         }
       }
     }
-  }, [savePushMutation, pushStatus]);
+  }, [savePushMutation, isAuthLoaded, isSignedIn]);
 
   const isSubscribed = pushStatus?.isSubscribed || hasBrowserPermission;
 
@@ -118,7 +124,11 @@ export function NotificationCenter() {
 
     try {
       if ("serviceWorker" in navigator) {
-        const reg = await navigator.serviceWorker.getRegistration();
+        let reg = await navigator.serviceWorker.getRegistration();
+        if (!reg) {
+          reg = await navigator.serviceWorker.register("/sw-custom.js", { scope: "/" });
+        }
+        await navigator.serviceWorker.ready;
         if (reg) {
           await reg.showNotification("🚨 Arki Test System Alert", {
             body: "Your system status bar & desktop alerts are working perfectly! 🎉",

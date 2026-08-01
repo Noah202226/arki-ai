@@ -1,7 +1,8 @@
 // Helper utility to convert VAPID public key to Uint8Array format
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const cleanStr = base64String.trim();
+  const padding = "=".repeat((4 - (cleanStr.length % 4)) % 4);
+  const base64 = (cleanStr + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = window.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
   for (let i = 0; i < rawData.length; ++i) {
@@ -80,11 +81,17 @@ export async function requestAndRegisterPush(
 
         if (!subscription) {
           const appServerKey = await getVapidApplicationServerKey();
-          const subscribeOptions: PushSubscriptionOptionsInit = {
-            userVisibleOnly: true,
-            ...(appServerKey ? { applicationServerKey: appServerKey as BufferSource } : {}),
-          };
-          subscription = await registration.pushManager.subscribe(subscribeOptions);
+          try {
+            const subscribeOptions: PushSubscriptionOptionsInit = {
+              userVisibleOnly: true,
+              ...(appServerKey ? { applicationServerKey: appServerKey as BufferSource } : {}),
+            };
+            subscription = await registration.pushManager.subscribe(subscribeOptions);
+          } catch (subErr) {
+            console.warn("VAPID PushManager subscribe failed, trying without applicationServerKey:", subErr);
+            // Fallback attempt without applicationServerKey if browser rejects dynamic/malformed VAPID key
+            subscription = await registration.pushManager.subscribe({ userVisibleOnly: true });
+          }
         }
 
         if (subscription) {
