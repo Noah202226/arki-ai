@@ -49,6 +49,34 @@ export function NotificationCenter() {
 
   const items = data?.items || [];
   const unreadCount = data?.unreadCount || 0;
+  const [prevLatestId, setPrevLatestId] = useState<string | null>(null);
+
+  // Trigger system OS banner whenever a new notification arrives in realtime from any device
+  useEffect(() => {
+    if (items.length > 0) {
+      const latest = items[0];
+      if (prevLatestId !== null && latest._id !== prevLatestId && !latest.isRead) {
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+          navigator.serviceWorker?.getRegistration().then((reg) => {
+            if (reg) {
+              reg.showNotification(latest.title, {
+                body: latest.message,
+                icon: "/android-chrome-192x192.png",
+                badge: "/favicon-32x32.png",
+                data: { url: latest.linkUrl || "/notifications" },
+              });
+            } else {
+              new Notification(latest.title, {
+                body: latest.message,
+                icon: "/android-chrome-192x192.png",
+              });
+            }
+          }).catch(() => {});
+        }
+      }
+      setPrevLatestId(latest._id);
+    }
+  }, [items, prevLatestId]);
 
   const filteredItems = items.filter((item) => {
     if (filter === "all") return true;

@@ -82,6 +82,21 @@ export const toggle = mutation({
     }
 
     await ctx.db.patch(args.id, patchData);
+
+    // If marked completed, insert a notification entry into notifications table
+    // so all active devices/tabs receive the update via Convex realtime subscription & OS alerts
+    if (newIsCompleted) {
+      await ctx.db.insert("notifications", {
+        userId: identity.subject,
+        title: "🎉 Task Completed!",
+        message: `Task completed: "${task.text}"`,
+        type: "task",
+        severity: "info",
+        isRead: false,
+        linkUrl: "/tasks",
+        createdAt: Date.now(),
+      });
+    }
   },
 });
 

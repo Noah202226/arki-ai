@@ -33,7 +33,34 @@ export function TaskRow({ task, onToggle, onDelete, isRoutine }: TaskRowProps) {
       />
 
       <button
-        onClick={() => onToggle({ id: task._id })}
+        onClick={async () => {
+          const willBeCompleted = !task.isCompleted;
+          onToggle({ id: task._id });
+
+          // Send OS notification when task is marked completed
+          if (willBeCompleted && typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+            try {
+              if ("serviceWorker" in navigator) {
+                const reg = await navigator.serviceWorker.getRegistration();
+                if (reg) {
+                  await reg.showNotification("🎉 Task Completed!", {
+                    body: `Completed: "${task.text}"`,
+                    icon: "/android-chrome-192x192.png",
+                    badge: "/favicon-32x32.png",
+                    data: { url: "/tasks" },
+                  });
+                  return;
+                }
+              }
+              new Notification("🎉 Task Completed!", {
+                body: `Completed: "${task.text}"`,
+                icon: "/android-chrome-192x192.png",
+              });
+            } catch (err) {
+              console.warn("Failed to trigger task OS notification:", err);
+            }
+          }
+        }}
         className="shrink-0 transition-transform active:scale-90"
       >
         {task.isCompleted ? (
