@@ -245,4 +245,12 @@ export default defineSchema({
     lastActiveDate: v.optional(v.string()), // Format: YYYY-MM-DD
     focusSessionsCompleted: v.optional(v.number()),
   }).index("by_userId", ["userId"]),
+
+  // 10. CATEGORY BUDGET LIMITS TABLE
+  budgets: defineTable({
+    userId: v.string(),
+    category: v.string(),
+    monthlyCap: v.number(),
+    updatedAt: v.number(),
+  }).index("by_userId", ["userId"]),
 });

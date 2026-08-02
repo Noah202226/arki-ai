@@ -41,6 +41,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useState, useMemo, useDeferredValue } from "react";
 import { EditCreditDialog } from "./EditCreditDialog";
+import { DebtPayoffPlanner } from "./DebtPayoffPlanner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useTransactionStore } from "@/app/store/use-transaction-store";
@@ -180,6 +181,9 @@ export function CreditTracker() {
           <AddCreditDialog />
         </div>
       </div>
+
+      {/* DEBT PAYOFF STRATEGY PLANNER (SNOWBALL VS AVALANCHE) */}
+      <DebtPayoffPlanner />
 
       {/* 2. Summary Card */}
       <Card className="bg-slate-950 dark:bg-slate-900 text-white border-none dark:border dark:border-slate-800 shadow-xl overflow-hidden relative">

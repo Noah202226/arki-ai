@@ -189,7 +189,14 @@ export function FinancialOverview() {
     return {
       due: totalDue,
       paid: financialsPaid,
-      breakdown: breakdown.sort((a, b) => b.amount - a.amount),
+      breakdown: breakdown.sort((a, b) => {
+        const timeA = a.dueDate || Infinity;
+        const timeB = b.dueDate || Infinity;
+        if (timeA !== timeB) {
+          return timeA - timeB; // Nearest due date first!
+        }
+        return b.amount - a.amount; // Secondary tie-breaker: higher amount first
+      }),
     };
   };
 

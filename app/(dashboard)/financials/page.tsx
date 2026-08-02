@@ -11,6 +11,7 @@ import { PayrollTracker } from "@/app/(dashboard)/financials/components/payroll-
 import { SubscriptionTracker } from "@/app/(dashboard)/financials/components/SubscriptionTracker";
 import { LifestyleCostCalculator } from "@/app/(dashboard)/financials/components/LifestyleCostCalculator";
 import { FinancialAnalytics } from "@/app/(dashboard)/financials/components/FinancialAnalytics";
+import { BudgetLimitsWidget } from "@/app/(dashboard)/financials/components/BudgetLimitsWidget";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import {
   Wallet,
@@ -147,6 +148,8 @@ export default function FinancialsPage() {
               </div>
               <FinancialAnalytics />
             </section>
+
+            <BudgetLimitsWidget />
 
             <section className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-100 dark:border-slate-800">

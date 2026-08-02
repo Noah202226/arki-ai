@@ -68,47 +68,76 @@ export function FinancialAnalytics() {
   const transactions = useQuery(api.financials.getTransactions) || [];
   const categories = useQuery(api.categories.getCategories, {}) || [];
 
-  // Filter transactions based on time range
+  const isTransferTx = (tx: { title?: string; category?: string }) => {
+    const cat = (tx.category || "").toLowerCase().trim();
+    const title = (tx.title || "").toLowerCase().trim();
+    return (
+      cat === "transfer" ||
+      cat === "starting balance" ||
+      title.includes("transfer to") ||
+      title.includes("transfer from") ||
+      title.includes("initial balance")
+    );
+  };
+
+  const isCredentialsTx = (tx: { title?: string; category?: string }) => {
+    const cat = (tx.category || "").toLowerCase().trim();
+    const title = (tx.title || "").toLowerCase().trim();
+    return (
+      cat === "credentials" ||
+      cat === "credential" ||
+      cat === "credit disbursement" ||
+      cat === "loan proceed" ||
+      title.includes("credentials") ||
+      title.includes("loan proceed") ||
+      title.includes("disbursement")
+    );
+  };
+
+  // Filter transactions based on time range (excluding internal wallet transfers)
   const filteredTransactions = useMemo(() => {
-    if (timeRange === "all") return transactions;
+    const active = transactions.filter((tx) => !tx.isDeleted && !isTransferTx(tx));
+
+    if (timeRange === "all") return active;
 
     const days = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90;
     const cutoff = subDays(startOfDay(new Date()), days).getTime();
 
-    return transactions.filter((tx) => tx.dueDate >= cutoff);
+    return active.filter((tx) => tx.dueDate >= cutoff);
   }, [transactions, timeRange]);
 
-  // Overall Financial KPI Calculations
+  // Overall Financial KPI Calculations (Differentiating Organic Earned Income vs Credentials/Loan Inflow)
   const metrics = useMemo(() => {
-    let totalIncome = 0;
+    let organicIncome = 0;
+    let credentialsIncome = 0;
     let totalExpense = 0;
 
     filteredTransactions.forEach((tx) => {
-      if (tx.isDeleted) return;
       if (tx.type === "income") {
-        if (tx.category?.toLowerCase() !== "transfer") {
-          totalIncome += tx.amount;
+        if (isCredentialsTx(tx)) {
+          credentialsIncome += tx.amount;
+        } else {
+          organicIncome += tx.amount;
         }
       } else if (tx.type === "expense" || tx.type === "payment") {
-        if (tx.category?.toLowerCase() !== "transfer") {
-          totalExpense += tx.amount;
-        }
+        totalExpense += tx.amount;
       }
     });
 
-    const netCashflow = totalIncome - totalExpense;
+    const totalIncome = organicIncome; // Real Organic Revenue
+    const netCashflow = organicIncome - totalExpense;
     const savingsRate =
-      totalIncome > 0 ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100) : 0;
+      organicIncome > 0 ? Math.round(((organicIncome - totalExpense) / organicIncome) * 100) : 0;
 
-    return { totalIncome, totalExpense, netCashflow, savingsRate };
+    return { organicIncome, credentialsIncome, totalIncome, totalExpense, netCashflow, savingsRate };
   }, [filteredTransactions]);
 
-  // Category Breakdown for Donut / Pie Chart
+  // Category Breakdown for Donut / Pie Chart & Ranking
   const categoryBreakdown = useMemo(() => {
     const map: Record<string, { name: string; amount: number; color: string; count: number }> = {};
 
     filteredTransactions.forEach((tx) => {
-      if (tx.isDeleted || tx.type !== "expense") return;
+      if (tx.type !== "expense") return;
       const catName = tx.category || "General";
       const key = catName.toLowerCase();
 
@@ -139,7 +168,7 @@ export function FinancialAnalytics() {
     const map: Record<string, { label: string; income: number; expense: number; dateTs: number }> = {};
 
     filteredTransactions.forEach((tx) => {
-      if (tx.isDeleted || tx.category?.toLowerCase() === "transfer") return;
+      if (isCredentialsTx(tx)) return;
 
       const dateKey = format(tx.dueDate, "yyyy-MM-dd");
       const dateLabel = format(tx.dueDate, "MMM dd");
@@ -338,89 +367,73 @@ export function FinancialAnalytics() {
       </div>
 
       {/* ── KPI METRICS CARDS ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Income */}
-        <Card className="p-4 rounded-2xl border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-shadow">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+        {/* Real Organic Earned Income */}
+        <Card className="p-3.5 rounded-2xl border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Total Income
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 truncate">
+              Earned Revenue
             </span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+            <div className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
               <LucideArrowDownLeft className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2 flex items-baseline justify-between">
-            <p className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400">
-              ₱{metrics.totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            <p className="text-xl font-black font-mono text-emerald-600 dark:text-emerald-400 truncate">
+              ₱{metrics.organicIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </p>
-            {trendAnalysis.incomeTrend !== 0 && (
-              <span
-                className={cn(
-                  "text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5",
-                  trendAnalysis.incomeUp
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                    : "bg-rose-500/10 text-rose-500"
-                )}
-              >
-                {trendAnalysis.incomeUp ? (
-                  <LucideTrendingUp className="w-3 h-3" />
-                ) : (
-                  <LucideTrendingDown className="w-3 h-3" />
-                )}
-                {trendAnalysis.incomeUp ? "+" : ""}
-                {trendAnalysis.incomeTrend}%
-              </span>
-            )}
           </div>
+          <p className="text-[9px] text-slate-400 mt-1">Salary, freelance &amp; sales</p>
+        </Card>
+
+        {/* Credentials / Borrowed Loan Inflow */}
+        <Card className="p-3.5 rounded-2xl border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 truncate">
+              Credentials Inflow
+            </span>
+            <div className="p-1.5 rounded-xl bg-indigo-500/10 text-indigo-500 shrink-0">
+              <LucideDollarSign className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline justify-between">
+            <p className="text-xl font-black font-mono text-indigo-400 truncate">
+              ₱{metrics.credentialsIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+          <p className="text-[9px] text-indigo-400/80 mt-1 font-bold">Borrowed loan proceeds</p>
         </Card>
 
         {/* Total Expense */}
-        <Card className="p-4 rounded-2xl border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="p-3.5 rounded-2xl border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 truncate">
               Total Expenses
             </span>
-            <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500">
+            <div className="p-1.5 rounded-xl bg-rose-500/10 text-rose-500 shrink-0">
               <LucideArrowUpRight className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2 flex items-baseline justify-between">
-            <p className="text-2xl font-black font-mono text-rose-500">
+            <p className="text-xl font-black font-mono text-rose-500 truncate">
               ₱{metrics.totalExpense.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </p>
-            {trendAnalysis.expenseTrend !== 0 && (
-              <span
-                className={cn(
-                  "text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5",
-                  !trendAnalysis.expenseUp
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                    : "bg-rose-500/10 text-rose-500"
-                )}
-              >
-                {trendAnalysis.expenseUp ? (
-                  <LucideTrendingUp className="w-3 h-3" />
-                ) : (
-                  <LucideTrendingDown className="w-3 h-3" />
-                )}
-                {trendAnalysis.expenseUp ? "+" : ""}
-                {trendAnalysis.expenseTrend}%
-              </span>
-            )}
           </div>
+          <p className="text-[9px] text-slate-400 mt-1">Outflow &amp; debt payments</p>
         </Card>
 
-        {/* Net Cashflow */}
-        <Card className="p-4 rounded-2xl border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-shadow">
+        {/* Net Organic Cashflow */}
+        <Card className="p-3.5 rounded-2xl border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Net Cash Flow
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 truncate">
+              Net Organic Flow
             </span>
             <div
               className={cn(
-                "p-2 rounded-xl",
+                "p-1.5 rounded-xl shrink-0",
                 metrics.netCashflow >= 0
-                  ? "bg-indigo-500/10 text-indigo-500"
-                  : "bg-amber-500/10 text-amber-500"
+                  ? "bg-emerald-500/10 text-emerald-500"
+                  : "bg-rose-500/10 text-rose-500"
               )}
             >
               <LucideDollarSign className="w-4 h-4" />
@@ -429,7 +442,7 @@ export function FinancialAnalytics() {
           <div className="mt-2">
             <p
               className={cn(
-                "text-2xl font-black font-mono",
+                "text-xl font-black font-mono truncate",
                 metrics.netCashflow >= 0
                   ? "text-slate-900 dark:text-slate-50"
                   : "text-rose-500"
@@ -438,7 +451,7 @@ export function FinancialAnalytics() {
               {metrics.netCashflow >= 0 ? "+" : ""}₱
               {metrics.netCashflow.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </p>
-            <p className="text-[11px] text-slate-400 mt-1">Net difference</p>
+            <p className="text-[9px] text-slate-400 mt-1">Earned minus expenses</p>
           </div>
         </Card>
 
