@@ -42,12 +42,12 @@ export function UserNavButton({ onAction, side = "top", compact = false }: UserN
     <img
       src={user.imageUrl}
       alt={user.fullName ?? "User"}
-      className={compact ? "w-7 h-7 rounded-lg object-cover border border-slate-100 dark:border-slate-800" : "w-9 h-9 rounded-xl object-cover border border-slate-100 dark:border-slate-800 shrink-0"}
+      className={compact ? "w-7 h-7 rounded-lg object-cover border border-slate-100 dark:border-slate-800" : "w-8 h-8 rounded-lg object-cover border border-slate-100 dark:border-slate-800 shrink-0"}
     />
   ) : (
     <div className={compact
       ? "w-7 h-7 rounded-lg bg-gradient-to-br from-[#ff6b35] to-orange-400 flex items-center justify-center text-white text-[10px] font-bold"
-      : "w-9 h-9 rounded-xl bg-gradient-to-br from-[#ff6b35] to-orange-400 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm shadow-[#ff6b35]/20"
+      : "w-8 h-8 rounded-lg bg-gradient-to-br from-[#ff6b35] to-orange-400 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm shadow-[#ff6b35]/20"
     }>
       {isLoaded ? initials : ""}
     </div>

@@ -83,19 +83,23 @@ export function CreditTracker() {
     [totalDebt, totalRemaining]
   );
 
-  // Category Debt Breakdown (Remaining Balance & Monthly Installments per Category)
+  // Category Debt Breakdown (Remaining Balance, Total Paid & Monthly Installments per Category)
   const categoryBreakdown = useMemo(() => {
     if (!credits || credits.length === 0) return [];
 
-    const map = new Map<string, { category: string; remaining: number; monthly: number; count: number }>();
+    const map = new Map<
+      string,
+      { category: string; remaining: number; paid: number; monthly: number; count: number }
+    >();
 
     for (const c of credits) {
       if (c.remainingBalance <= 0) continue; // Only count active remaining debt
       const cat = c.category?.trim() || "General";
-      const existing = map.get(cat) || { category: cat, remaining: 0, monthly: 0, count: 0 };
+      const existing = map.get(cat) || { category: cat, remaining: 0, paid: 0, monthly: 0, count: 0 };
       map.set(cat, {
         category: cat,
         remaining: existing.remaining + c.remainingBalance,
+        paid: existing.paid + (c.totalPaid || 0),
         monthly: existing.monthly + (c.monthlyInstallment || 0),
         count: existing.count + 1,
       });
@@ -296,13 +300,24 @@ export function CreditTracker() {
                     </span>
                   </div>
 
-                  <div className="flex items-baseline justify-between pt-0.5">
-                    <span className="text-sm font-black font-mono text-rose-600 dark:text-rose-400">
-                      ₱{item.remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </span>
-                    <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-bold">
-                      ₱{item.monthly.toLocaleString()}/mo
-                    </span>
+                  <div className="flex items-baseline justify-between pt-0.5 flex-wrap gap-y-1">
+                    <div>
+                      <span className="text-[8px] font-extrabold uppercase text-slate-400 block leading-none mb-0.5">
+                        Remaining
+                      </span>
+                      <span className="text-sm font-black font-mono text-rose-600 dark:text-rose-400">
+                        ₱{item.remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 block leading-tight">
+                        ₱{item.paid.toLocaleString()} paid
+                      </span>
+                      <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-bold block">
+                        ₱{item.monthly.toLocaleString()}/mo
+                      </span>
+                    </div>
                   </div>
 
                   {/* Share Progress Bar */}

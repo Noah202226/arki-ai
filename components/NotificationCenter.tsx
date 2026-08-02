@@ -249,6 +249,7 @@ export function NotificationCenter() {
             { id: "all", label: "All" },
             { id: "subscription", label: "Bills" },
             { id: "credit", label: "Loans" },
+            { id: "task", label: "Tasks" },
           ].map((tab) => (
             <button
               key={tab.id}
