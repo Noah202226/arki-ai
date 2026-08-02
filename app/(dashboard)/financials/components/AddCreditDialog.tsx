@@ -21,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Loader2, Info, CalendarDays, Tag, Wallet, ArrowDownLeft } from "lucide-react";
+import { Plus, Loader2, Info, CalendarDays, Tag, Wallet, ArrowDownLeft, HelpCircle } from "lucide-react";
 
 export function AddCreditDialog() {
   const [open, setOpen] = useState(false);
@@ -36,9 +36,10 @@ export function AddCreditDialog() {
   const [monthly, setMonthly] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [category, setCategory] = useState("Personal");
+  const [customCategory, setCustomCategory] = useState("");
 
-  // Optional Income Deposit fields (enabled by default so loan cash goes straight to transactions)
-  const [recordIncome, setRecordIncome] = useState(true);
+  // Optional Income Deposit fields (default false for BNPL safety)
+  const [recordIncome, setRecordIncome] = useState(false);
   const [depositAccountId, setDepositAccountId] = useState("");
   const [depositAmount, setDepositAmount] = useState("");
 
@@ -53,6 +54,8 @@ export function AddCreditDialog() {
     e.preventDefault();
     setIsSubmitting(true);
 
+    const finalCategory = category === "__custom__" ? customCategory.trim() || "General" : category;
+
     try {
       await addCredit({
         creditorName: name,
@@ -60,7 +63,7 @@ export function AddCreditDialog() {
         interest: Number(interest) || 0,
         monthlyInstallment: Number(monthly),
         dueDate: Number(dueDate),
-        category: category,
+        category: finalCategory,
         depositAccountId: recordIncome && depositAccountId ? (depositAccountId as Id<"accounts">) : undefined,
         depositAmount: recordIncome ? Number(depositAmount || total) : undefined,
       });
@@ -73,6 +76,7 @@ export function AddCreditDialog() {
       setMonthly("");
       setDueDate("");
       setCategory("Personal");
+      setCustomCategory("");
       setRecordIncome(false);
       setDepositAccountId("");
       setDepositAmount("");
@@ -127,16 +131,34 @@ export function AddCreditDialog() {
                 <SelectTrigger className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 h-11 rounded-xl focus:ring-2 focus:ring-[#ff6b35]">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xl">
-                  <SelectItem value="Personal">Personal</SelectItem>
-                  <SelectItem value="Business">Business</SelectItem>
-                  <SelectItem value="Bank/SaaS">Bank/SaaS</SelectItem>
-                  <SelectItem value="Government">Government</SelectItem>
-                  <SelectItem value="Motorcycle Installment">Motorcycle Installment</SelectItem>
-                  <SelectItem value="Gadget/Phone Installment">Gadget/Phone Installment</SelectItem>
-                  <SelectItem value="Education/Tuition">Education/Tuition</SelectItem>
+                <SelectContent className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xl max-h-60">
+                  <SelectItem value="SPayLater">🧡 SPayLater (Shopee)</SelectItem>
+                  <SelectItem value="LazPayLater">💙 LazPayLater (Lazada)</SelectItem>
+                  <SelectItem value="OLA / Micro-Loan">⚡ OLA / Micro-Loan (MabilisCash, Tala)</SelectItem>
+                  <SelectItem value="Billease">🟣 Billease</SelectItem>
+                  <SelectItem value="Gloan / GCash">💙 Gloan / GCash Credit</SelectItem>
+                  <SelectItem value="Maya Credit">💚 Maya Credit</SelectItem>
+                  <SelectItem value="Credit Card">💳 Credit Card</SelectItem>
+                  <SelectItem value="BNPL (Buy Now Pay Later)">🛍️ BNPL (Buy Now Pay Later)</SelectItem>
+                  <SelectItem value="Personal">👤 Personal / Friend Loan</SelectItem>
+                  <SelectItem value="Business">💼 Business</SelectItem>
+                  <SelectItem value="Gadget/Phone Installment">📱 Gadget/Phone Installment</SelectItem>
+                  <SelectItem value="Motorcycle Installment">🏍️ Motorcycle Installment</SelectItem>
+                  <SelectItem value="Bank/SaaS">🏦 Bank/SaaS</SelectItem>
+                  <SelectItem value="Government">🏛️ Government</SelectItem>
+                  <SelectItem value="Education/Tuition">🎓 Education/Tuition</SelectItem>
+                  <SelectItem value="__custom__">✨ + Custom Category...</SelectItem>
                 </SelectContent>
               </Select>
+              {category === "__custom__" && (
+                <Input
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  placeholder="Enter custom category name..."
+                  className="mt-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 h-10 px-3 font-medium rounded-xl text-xs"
+                  required
+                />
+              )}
             </div>
           </div>
 
@@ -203,12 +225,12 @@ export function AddCreditDialog() {
           </div>
 
           {/* ── OPTIONAL: RECORD LOAN DISBURSEMENT AS INCOME ───────────────── */}
-          <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-3">
+          <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <ArrowDownLeft className="w-4 h-4 text-emerald-500" />
+                <ArrowDownLeft className="w-4 h-4 text-emerald-500 shrink-0" />
                 <Label className="text-xs font-extrabold text-slate-800 dark:text-slate-200 cursor-pointer">
-                  Record Loan Disbursement as Income?
+                  Deposit Cash Loan to Wallet?
                 </Label>
               </div>
               <input
@@ -222,6 +244,21 @@ export function AddCreditDialog() {
                 }}
                 className="w-4 h-4 accent-[#ff6b35] rounded cursor-pointer"
               />
+            </div>
+
+            {/* Quick Explanatory Guide */}
+            <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-[11px] space-y-1">
+              <p className="font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                <HelpCircle className="w-3.5 h-3.5 shrink-0" /> When to check this box?
+              </p>
+              <ul className="list-disc list-inside space-y-0.5 text-[10px] text-slate-600 dark:text-slate-300">
+                <li>
+                  <strong className="text-slate-800 dark:text-slate-100">Leave Unchecked (Off)</strong> for <strong>SPayLater / LazPayLater / Credit Cards</strong> (merchant paid directly, no cash entered your wallet).
+                </li>
+                <li>
+                  <strong className="text-slate-800 dark:text-slate-100">Check (On)</strong> only for <strong>Cash Loans</strong> (e.g. Gloan, SSS) where borrowed cash was deposited into your wallet.
+                </li>
+              </ul>
             </div>
 
             {recordIncome && (

@@ -14,6 +14,8 @@ import {
   ArrowDownLeft,
   AlertTriangle,
   Wallet,
+  RefreshCw,
+  PenLine,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -173,6 +175,13 @@ export function TransactionHistory() {
                 const catColor = categoryMatch?.color || "#94a3b8";
                 const account = accounts?.find((a) => a._id === tx.accountId);
 
+                const isAutoRecurring =
+                  (tx.frequency && tx.frequency !== "one-time") ||
+                  tx.title.startsWith("Recurring Expense:") ||
+                  tx.title.startsWith("Daily Retainer:") ||
+                  tx.title.startsWith("Subscription:") ||
+                  tx.title.startsWith("Client Retainer:");
+
                 return (
                   <div
                     key={tx._id}
@@ -220,6 +229,18 @@ export function TransactionHistory() {
                         <span className="text-[10px] text-slate-400 font-mono">
                           {format(tx.dueDate, "hh:mm a")}
                         </span>
+
+                        {/* RECURRING AUTO VS MANUAL BADGE */}
+                        {isAutoRecurring ? (
+                          <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border shrink-0 bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30 flex items-center gap-1">
+                            <RefreshCw className="w-2.5 h-2.5 text-purple-500" /> Recurring Auto
+                          </span>
+                        ) : (
+                          <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-md border shrink-0 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200/60 dark:border-slate-700/60 flex items-center gap-1">
+                            <PenLine className="w-2.5 h-2.5 text-slate-400" /> Manual Input
+                          </span>
+                        )}
+
                         <span
                           className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border shrink-0"
                           style={{

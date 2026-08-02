@@ -39,6 +39,7 @@ import {
   ReceiptText,
   Tag,
   Zap,
+  AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -67,6 +68,8 @@ export function AddTransactionDialog() {
   const [accountId, setAccountId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState<Date>(new Date());
+
+  const selectedAccount = accounts?.find((a) => a._id === accountId);
 
   useEffect(() => {
     if (isOpen) {
@@ -307,24 +310,68 @@ export function AddTransactionDialog() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-400 px-1">
-                  Wallet
-                </Label>
-                <Select onValueChange={setAccountId} required>
+                <div className="flex items-center justify-between px-1">
+                  <Label className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-400">
+                    Wallet / Source
+                  </Label>
+                  {selectedAccount && (
+                    <span
+                      className={cn(
+                        "text-[10px] font-mono font-bold",
+                        type === "expense" && Number(amount) > 0 && selectedAccount.balance < Number(amount)
+                          ? "text-rose-500"
+                          : "text-emerald-600 dark:text-emerald-400"
+                      )}
+                    >
+                      Bal: ₱{selectedAccount.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                  )}
+                </div>
+                <Select value={accountId} onValueChange={setAccountId} required>
                   <SelectTrigger className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 h-11 rounded-xl focus:ring-2 focus:ring-[#ff6b35]">
-                    <SelectValue placeholder="Source" />
+                    <SelectValue placeholder="Select Source Wallet" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xl">
-                    {accounts?.map((acc) => (
-                      <SelectItem key={acc._id} value={acc._id}>
-                        <div className="flex items-center gap-2">
-                          <Wallet className="w-3.5 h-3.5 text-slate-400 dark:text-slate-400" />
-                          {acc.accountName}
-                        </div>
-                      </SelectItem>
-                    ))}
+                  <SelectContent className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xl max-h-60">
+                    {accounts?.map((acc) => {
+                      const numAmount = Number(amount) || 0;
+                      const isInsufficient = type === "expense" && numAmount > 0 && acc.balance < numAmount;
+
+                      return (
+                        <SelectItem key={acc._id} value={acc._id}>
+                          <div className="flex items-center justify-between gap-3 w-full">
+                            <div className="flex items-center gap-2 truncate">
+                              <Wallet className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span className="font-semibold text-xs truncate">{acc.accountName}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 font-mono text-xs shrink-0 ml-auto">
+                              <span
+                                className={cn(
+                                  "font-bold",
+                                  isInsufficient
+                                    ? "text-rose-500 dark:text-rose-400"
+                                    : "text-emerald-600 dark:text-emerald-400"
+                                )}
+                              >
+                                ₱{acc.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </span>
+                              {isInsufficient && (
+                                <span className="text-[9px] font-black uppercase tracking-wider text-rose-500 bg-rose-500/10 px-1 py-0.5 rounded border border-rose-500/20">
+                                  Low
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
+                {selectedAccount && type === "expense" && Number(amount) > 0 && selectedAccount.balance < Number(amount) && (
+                  <p className="text-[11px] font-bold text-rose-500 flex items-center gap-1 mt-1 px-1">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    Insufficient balance (Short by ₱{(Number(amount) - selectedAccount.balance).toLocaleString(undefined, { minimumFractionDigits: 2 })})
+                  </p>
+                )}
               </div>
             </div>
 

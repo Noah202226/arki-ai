@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -38,12 +38,20 @@ interface EditCreditDialogProps {
 }
 
 const CATEGORY_OPTIONS = [
+  "SPayLater",
+  "LazPayLater",
+  "OLA / Micro-Loan",
+  "Billease",
+  "Gloan / GCash",
+  "Maya Credit",
+  "Credit Card",
+  "BNPL (Buy Now Pay Later)",
   "Personal",
   "Business",
+  "Gadget/Phone Installment",
+  "Motorcycle Installment",
   "Bank/SaaS",
   "Government",
-  "Motorcycle Installment",
-  "Gadget/Phone Installment",
   "Education/Tuition",
 ];
 
@@ -66,6 +74,29 @@ export function EditCreditDialog({
   const [monthly, setMonthly] = useState(String(credit.monthlyInstallment));
   const [dueDay, setDueDay] = useState(String(initialDueDay));
   const [category, setCategory] = useState(credit.category ?? "Personal");
+  const [customCategory, setCustomCategory] = useState("");
+
+  // Re-synchronize form states when selected credit or open changes
+  useEffect(() => {
+    if (open && credit) {
+      const raw = credit.dueDate;
+      const day = raw > 31 ? new Date(raw).getDate() : raw;
+      setName(credit.creditorName || "");
+      setTotal(String(credit.totalAmount ?? ""));
+      setInterest(String(credit.interest ?? 0));
+      setMonthly(String(credit.monthlyInstallment ?? ""));
+      setDueDay(String(day ?? ""));
+
+      const isKnown = CATEGORY_OPTIONS.includes(credit.category || "");
+      if (credit.category && !isKnown) {
+        setCategory("__custom__");
+        setCustomCategory(credit.category);
+      } else {
+        setCategory(credit.category ?? "Personal");
+        setCustomCategory("");
+      }
+    }
+  }, [open, credit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,6 +105,8 @@ export function EditCreditDialog({
     const numInterest = parseFloat(interest) || 0;
     const numMonthly = parseFloat(monthly);
     const numDueDay = parseInt(dueDay);
+
+    const finalCategory = category === "__custom__" ? customCategory.trim() || "General" : category;
 
     if (!name.trim()) return toast.error("Creditor name is required.");
     if (isNaN(numTotal) || numTotal <= 0) return toast.error("Enter a valid total amount.");
@@ -89,7 +122,7 @@ export function EditCreditDialog({
         interest: numInterest,
         monthlyInstallment: numMonthly,
         dueDate: numDueDay,
-        category,
+        category: finalCategory,
       });
       toast.success(`"${name}" updated successfully.`);
       onOpenChange(false);
@@ -139,12 +172,22 @@ export function EditCreditDialog({
                 <SelectTrigger className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 text-slate-900 dark:text-slate-100 h-11 rounded-xl focus:ring-2 focus:ring-[#ff6b35]">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xl">
+                <SelectContent className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xl max-h-60">
                   {CATEGORY_OPTIONS.map((opt) => (
                     <SelectItem key={opt} value={opt}>{opt}</SelectItem>
                   ))}
+                  <SelectItem value="__custom__">✨ + Custom Category...</SelectItem>
                 </SelectContent>
               </Select>
+              {category === "__custom__" && (
+                <Input
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  placeholder="Enter custom category name..."
+                  className="mt-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 text-slate-900 dark:text-slate-100 h-10 px-3 font-medium rounded-xl text-xs"
+                  required
+                />
+              )}
             </div>
           </div>
 

@@ -25,6 +25,9 @@ import {
   Plus,
   Search,
   X,
+  ReceiptText,
+  PieChart,
+  Flame,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { AddCreditDialog } from "./AddCreditDialog";
@@ -79,6 +82,27 @@ export function CreditTracker() {
     () => (totalDebt > 0 ? ((totalDebt - totalRemaining) / totalDebt) * 100 : 0),
     [totalDebt, totalRemaining]
   );
+
+  // Category Debt Breakdown (Remaining Balance & Monthly Installments per Category)
+  const categoryBreakdown = useMemo(() => {
+    if (!credits || credits.length === 0) return [];
+
+    const map = new Map<string, { category: string; remaining: number; monthly: number; count: number }>();
+
+    for (const c of credits) {
+      if (c.remainingBalance <= 0) continue; // Only count active remaining debt
+      const cat = c.category?.trim() || "General";
+      const existing = map.get(cat) || { category: cat, remaining: 0, monthly: 0, count: 0 };
+      map.set(cat, {
+        category: cat,
+        remaining: existing.remaining + c.remainingBalance,
+        monthly: existing.monthly + (c.monthlyInstallment || 0),
+        count: existing.count + 1,
+      });
+    }
+
+    return Array.from(map.values()).sort((a, b) => b.remaining - a.remaining);
+  }, [credits]);
 
   // Memoize search filtering and sorting to avoid heavy recalculations on every keystroke
   const sortedCredits = useMemo(() => {
@@ -216,6 +240,113 @@ export function CreditTracker() {
         </CardContent>
         <TrendingDown className="absolute -right-6 -bottom-6 w-32 h-32 text-white/5 dark:text-slate-800/40 -rotate-12" />
       </Card>
+
+      {/* Category Debt Breakdown & Highest Liability Ranking */}
+      {categoryBreakdown.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-[#ff6b35]/10 text-[#ff6b35]">
+                <PieChart className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
+                  Category Debt Breakdown & Ranking
+                </h3>
+                <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                  Remaining balance grouped by category (highest liability first)
+                </p>
+              </div>
+            </div>
+
+            {/* Highest Debt Highlight Badge */}
+            <div className="flex items-center gap-2 bg-rose-500/10 text-rose-500 border border-rose-500/20 px-3 py-1 rounded-xl text-xs font-bold w-fit">
+              <Flame className="w-3.5 h-3.5 shrink-0 text-rose-500" />
+              <span>
+                Highest: <strong>{categoryBreakdown[0].category}</strong> (₱{categoryBreakdown[0].remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })})
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+            {categoryBreakdown.map((item, idx) => {
+              const pct = totalRemaining > 0 ? (item.remaining / totalRemaining) * 100 : 0;
+              const isSelected = searchQuery.toLowerCase() === item.category.toLowerCase();
+
+              return (
+                <div
+                  key={item.category}
+                  onClick={() => setSearchQuery(isSelected ? "" : item.category)}
+                  className={cn(
+                    "p-3.5 rounded-2xl border transition-all cursor-pointer space-y-2",
+                    isSelected
+                      ? "bg-[#ff6b35]/10 border-[#ff6b35] text-slate-900 dark:text-white shadow-sm"
+                      : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-800/80 hover:border-[#ff6b35]/40"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 truncate">
+                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                        #{idx + 1}
+                      </span>
+                      {item.category}
+                    </span>
+                    <span className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500">
+                      {item.count} {item.count === 1 ? "loan" : "loans"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-baseline justify-between pt-0.5">
+                    <span className="text-sm font-black font-mono text-rose-600 dark:text-rose-400">
+                      ₱{item.remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-bold">
+                      ₱{item.monthly.toLocaleString()}/mo
+                    </span>
+                  </div>
+
+                  {/* Share Progress Bar */}
+                  <div className="space-y-1 pt-1">
+                    <div className="flex justify-between text-[9px] font-bold text-slate-400">
+                      <span>Share of Debt</span>
+                      <span>{pct.toFixed(1)}%</span>
+                    </div>
+                    <Progress value={pct} className="h-1.5 bg-slate-200 dark:bg-slate-800 [&>div]:bg-[#ff6b35]" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Category Quick Filter Chips */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        <span className="text-[10px] font-extrabold uppercase text-slate-400 dark:text-slate-500 shrink-0 mr-1">
+          Quick Filter:
+        </span>
+        {["All", "SPayLater", "LazPayLater", "OLA / Micro-Loan", "Billease", "Gloan", "Maya Credit", "Credit Card", "Personal"].map((cat) => {
+          const isActive =
+            cat === "All"
+              ? !searchQuery
+              : searchQuery.toLowerCase() === cat.toLowerCase();
+          return (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setSearchQuery(cat === "All" ? "" : cat)}
+              className={cn(
+                "px-2.5 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition-all border shrink-0",
+                isActive
+                  ? "bg-[#ff6b35] text-white border-[#ff6b35] shadow-sm"
+                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-[#ff6b35]/40"
+              )}
+            >
+              {cat}
+            </button>
+          );
+        })}
+      </div>
 
       {/* 3. Individual Credits */}
       {sortedCredits.length === 0 ? (
@@ -487,98 +618,104 @@ export function CreditTracker() {
                           History
                         </Button>
                       </SheetTrigger>
-                      <SheetContent className="w-full sm:max-w-md border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl flex flex-col p-0 text-slate-900 dark:text-slate-100">
-                      <div className="p-6 border-b bg-slate-50/50">
-                        <SheetHeader className="text-left mb-6">
-                          <div className="flex items-center gap-3">
-                            <div className="bg-orange-600 p-2 rounded-xl text-white shadow-lg shadow-orange-200">
-                              <History className="w-5 h-5" />
+                      <SheetContent className="w-full sm:max-w-md border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-2xl flex flex-col p-0 text-slate-900 dark:text-slate-100">
+                        {/* HEADER */}
+                        <div className="p-6 border-b border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/70">
+                          <SheetHeader className="text-left mb-5">
+                            <div className="flex items-center gap-3">
+                              <div className="bg-[#ff6b35] p-2.5 rounded-2xl text-white shadow-lg shadow-[#ff6b35]/25">
+                                <History className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <SheetTitle className="text-lg font-extrabold text-slate-900 dark:text-white">
+                                  Repayment History
+                                </SheetTitle>
+                                <SheetDescription className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                  Tracking payments for{" "}
+                                  <span className="text-[#ff6b35] font-extrabold">
+                                    {loan.creditorName}
+                                  </span>
+                                </SheetDescription>
+                              </div>
                             </div>
-                            <div>
-                              <SheetTitle className="text-xl font-bold">
-                                Repayment History
-                              </SheetTitle>
-                              <SheetDescription className="text-xs font-medium text-slate-500">
-                                Tracking payments for{" "}
-                                <span className="text-orange-600 font-bold">
-                                  {loan.creditorName}
-                                </span>
-                              </SheetDescription>
-                            </div>
-                          </div>
-                        </SheetHeader>
+                          </SheetHeader>
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 py-1">
-                          <div>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
-                              Paid
-                            </p>
-                            <p className="text-[13px] font-bold text-green-600 font-mono">
-                              ₱{loan.totalPaid.toLocaleString()}
-                            </p>
-                          </div>
-                          <div className="border-l pl-2">
-                            <p className="text-[9px] font-bold text-orange-600 uppercase mb-0.5">
-                              Monthly
-                            </p>
-                            <p className="text-[13px] font-bold text-orange-600 font-mono">
-                              ₱{(loan.monthlyInstallment || 0).toLocaleString()}
-                            </p>
-                          </div>
-                          <div className="border-l pl-2">
-                            <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
-                              Balance
-                            </p>
-                            <p className="text-[13px] font-bold text-red-600 font-mono">
-                              ₱{loan.remainingBalance.toLocaleString()}
-                            </p>
-                          </div>
-                          <div className="border-l pl-2">
-                            <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">
-                              Left
-                            </p>
-                            <p className="text-[13px] font-bold text-slate-700 font-mono">
-                              {loan.remainingMonths}{" "}
-                              <span className="text-[10px]">Mo.</span>
-                            </p>
+                          {/* METRICS GRID */}
+                          <div className="grid grid-cols-4 gap-2 pt-1">
+                            <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800 text-center shadow-sm">
+                              <p className="text-[9px] font-extrabold text-slate-400 dark:text-slate-400 uppercase mb-0.5">
+                                Paid
+                              </p>
+                              <p className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 truncate">
+                                ₱{loan.totalPaid.toLocaleString()}
+                              </p>
+                            </div>
+
+                            <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800 text-center shadow-sm">
+                              <p className="text-[9px] font-extrabold text-amber-500 uppercase mb-0.5">
+                                Monthly
+                              </p>
+                              <p className="text-xs font-mono font-bold text-amber-600 dark:text-amber-400 truncate">
+                                ₱{(loan.monthlyInstallment || 0).toLocaleString()}
+                              </p>
+                            </div>
+
+                            <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800 text-center shadow-sm">
+                              <p className="text-[9px] font-extrabold text-rose-500 uppercase mb-0.5">
+                                Balance
+                              </p>
+                              <p className="text-xs font-mono font-bold text-rose-600 dark:text-rose-400 truncate">
+                                ₱{loan.remainingBalance.toLocaleString()}
+                              </p>
+                            </div>
+
+                            <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800 text-center shadow-sm">
+                              <p className="text-[9px] font-extrabold text-slate-400 dark:text-slate-400 uppercase mb-0.5">
+                                Left
+                              </p>
+                              <p className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200 truncate">
+                                {loan.remainingMonths} <span className="text-[9px] text-slate-400">Mo.</span>
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="flex-1 overflow-y-auto p-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">
-                            Transaction Logs
-                          </h4>
-                          <Badge
+                        {/* BODY LOGS */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-[11px] font-extrabold text-slate-900 dark:text-slate-100 uppercase tracking-widest flex items-center gap-1.5">
+                              <ReceiptText className="w-3.5 h-3.5 text-[#ff6b35]" /> Transaction Logs
+                            </h4>
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                            >
+                              {loan.remainingMonths} Months Left
+                            </Badge>
+                          </div>
+                          <CreditTransactionFlow
+                            creditorName={loan.creditorName}
+                            creditId={loan._id}
+                          />
+                        </div>
+
+                        {/* FOOTER */}
+                        <div className="p-4 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/70">
+                          <Button
                             variant="outline"
-                            className="text-[9px] font-bold bg-slate-100 border-none"
+                            className="w-full border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#ff6b35] dark:hover:text-[#ff8555] hover:border-[#ff6b35]/40 transition-all font-bold text-xs rounded-xl"
                           >
-                            {loan.remainingMonths} Months Left
-                          </Badge>
+                            Export Payment Summary
+                          </Button>
                         </div>
-                        <CreditTransactionFlow
-                          creditorName={loan.creditorName}
-                          creditId={loan._id}
-                        />
-                      </div>
-
-                      <div className="p-6 border-t bg-slate-50/50">
-                        <Button
-                          variant="outline"
-                          className="w-full border-dashed border-slate-300 text-slate-500 hover:text-orange-600 hover:border-orange-200 transition-all"
-                        >
-                          Generate Payment Report
-                        </Button>
-                      </div>
-                    </SheetContent>
-                  </Sheet>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                      </SheetContent>
+                    </Sheet>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       )}
       {selectedCredit && (
         <EditCreditDialog
@@ -591,7 +728,7 @@ export function CreditTracker() {
   );
 }
 
-// Transaction Flow component (pwedeng i-keep sa parehong file o i-separate)
+// Transaction Flow component
 function CreditTransactionFlow({
   creditorName: _creditorName,
   creditId,
@@ -602,7 +739,13 @@ function CreditTransactionFlow({
   const allTransactions = useQuery(api.financials.getAllTransactions);
 
   if (!allTransactions)
-    return <div className="py-2 animate-pulse h-4 bg-slate-50 rounded" />;
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-12 w-full bg-slate-100 dark:bg-slate-800/60 animate-pulse rounded-xl" />
+        ))}
+      </div>
+    );
 
   const payments = allTransactions
     .filter((tx) => tx.creditId === creditId)
@@ -610,13 +753,19 @@ function CreditTransactionFlow({
 
   if (payments.length === 0)
     return (
-      <p className="text-[10px] text-muted-foreground italic py-2">
-        No payments recorded.
-      </p>
+      <div className="text-center py-8 px-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-2">
+        <ReceiptText className="w-8 h-8 text-slate-400 dark:text-slate-600 mx-auto" />
+        <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+          No payment logs recorded
+        </p>
+        <p className="text-[10px] text-slate-400 dark:text-slate-500">
+          Payments made towards this credit card will automatically appear here.
+        </p>
+      </div>
     );
 
   return (
-    <div className="space-y-1 max-h-40 overflow-y-auto pr-2">
+    <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
       {payments.map((p) => {
         const isReversal = p.type === "reversal";
         const isVoided = p.isDeleted;
@@ -625,32 +774,35 @@ function CreditTransactionFlow({
           <div
             key={p._id}
             className={cn(
-              "flex justify-between items-center text-xs py-1.5 border-b border-slate-50 last:border-0",
-              isVoided && "opacity-40 grayscale",
-              isReversal && "bg-blue-50/50 rounded px-1",
+              "flex justify-between items-center p-3.5 rounded-2xl border transition-all",
+              isVoided
+                ? "opacity-40 grayscale bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                : isReversal
+                ? "bg-blue-500/10 border-blue-500/30 text-blue-300"
+                : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-sm"
             )}
           >
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-slate-700">
-                {isReversal ? "REFUND/ADJUSTMENT" : p.title}
-              </span>
-              <span className="text-slate-400 text-[9px]">
-                {format(new Date(p.dueDate), "MMM dd, yyyy")}
+            <div className="space-y-0.5">
+              <p className="text-xs font-extrabold text-slate-900 dark:text-slate-100 leading-tight">
+                {isReversal ? "REFUND / ADJUSTMENT" : p.title}
+              </p>
+              <span className="text-[10px] font-mono text-slate-400 dark:text-slate-400 block">
+                {format(new Date(p.dueDate), "MMM dd, yyyy · hh:mm a")}
               </span>
             </div>
 
             <div className="text-right">
               {isReversal || (isVoided && p.type === "expense") ? (
-                <span className="font-black text-green-500 font-mono">
-                  + ₱{p.amount.toLocaleString()}
+                <span className="font-mono font-bold text-xs text-emerald-600 dark:text-emerald-400">
+                  +₱{p.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </span>
               ) : (
-                <span className="font-black text-red-500 font-mono">
-                  - ₱{p.amount.toLocaleString()}
+                <span className="font-mono font-bold text-xs text-rose-500 dark:text-rose-400">
+                  -₱{p.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </span>
               )}
               {isVoided && (
-                <div className="text-[8px] font-bold text-slate-400 uppercase">
+                <div className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">
                   Voided
                 </div>
               )}
