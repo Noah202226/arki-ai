@@ -16,6 +16,26 @@ export const get = query({
   },
 });
 
+// Get user gamification stats
+export const getUserStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return { xp: 0, level: 1, streakCount: 0, focusSessionsCompleted: 0 };
+
+    const stats = await ctx.db
+      .query("userStats")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .first();
+
+    if (!stats) {
+      return { xp: 0, level: 1, streakCount: 0, focusSessionsCompleted: 0 };
+    }
+
+    return stats;
+  },
+});
+
 // Add task or routine
 export const create = mutation({
   args: {
@@ -26,10 +46,25 @@ export const create = mutation({
     priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
     category: v.optional(v.string()),
     frequency: v.optional(v.union(v.literal("daily"), v.literal("weekly"))),
+    estimatedMinutes: v.optional(v.number()),
+    subtasks: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          text: v.string(),
+          isCompleted: v.boolean(),
+        })
+      )
+    ),
     isCompleted: v.boolean(),
     isDeleted: v.boolean(),
   },
   handler: async (ctx, args) => {
+    let xpValue = 20;
+    if (args.type === "routine") xpValue = 25;
+    else if (args.priority === "high") xpValue = 50;
+    else if (args.priority === "medium") xpValue = 30;
+
     return await ctx.db.insert("tasks", {
       userId: args.userId,
       text: args.text,
@@ -38,6 +73,9 @@ export const create = mutation({
       priority: args.priority,
       category: args.category,
       frequency: args.frequency,
+      estimatedMinutes: args.estimatedMinutes,
+      subtasks: args.subtasks,
+      xpValue,
       isCompleted: args.isCompleted,
       isDeleted: args.isDeleted,
     });
@@ -59,7 +97,7 @@ export const remove = mutation({
   },
 });
 
-// Toggle Task/Routine completion
+// Toggle Task/Routine completion with XP & Streak rewarding
 export const toggle = mutation({
   args: { id: v.id("tasks") },
   handler: async (ctx, args) => {
@@ -67,7 +105,6 @@ export const toggle = mutation({
     if (!identity) throw new Error("Unauthenticated");
 
     const task = await ctx.db.get(args.id);
-
     if (!task || task.userId !== identity.subject) {
       throw new Error("Unauthorized");
     }
@@ -75,21 +112,60 @@ export const toggle = mutation({
     const newIsCompleted = !task.isCompleted;
     const patchData: { isCompleted: boolean; lastCompleted?: number } = { isCompleted: newIsCompleted };
 
-    // Logic: If it's a routine and we are marking it as "Done",
-    // we update the lastCompleted timestamp to NOW.
     if (task.type === "routine" && newIsCompleted) {
       patchData.lastCompleted = Date.now();
     }
 
     await ctx.db.patch(args.id, patchData);
 
-    // If marked completed, insert a notification entry into notifications table
-    // so all active devices/tabs receive the update via Convex realtime subscription & OS alerts
+    const xpAmount = task.xpValue ?? (task.priority === "high" ? 50 : task.priority === "medium" ? 30 : 20);
+
+    const stats = await ctx.db
+      .query("userStats")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .first();
+
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    if (!stats) {
+      const initialXp = newIsCompleted ? xpAmount : 0;
+      await ctx.db.insert("userStats", {
+        userId: identity.subject,
+        xp: initialXp,
+        level: Math.floor(initialXp / 250) + 1,
+        streakCount: 1,
+        lastActiveDate: todayStr,
+        focusSessionsCompleted: 0,
+      });
+    } else {
+      let newXp = newIsCompleted ? stats.xp + xpAmount : Math.max(0, stats.xp - xpAmount);
+      let newStreak = stats.streakCount;
+
+      if (newIsCompleted && stats.lastActiveDate !== todayStr) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+        if (stats.lastActiveDate === yesterdayStr) {
+          newStreak += 1;
+        } else if (!stats.lastActiveDate) {
+          newStreak = 1;
+        }
+      }
+
+      await ctx.db.patch(stats._id, {
+        xp: newXp,
+        level: Math.floor(newXp / 250) + 1,
+        streakCount: newStreak,
+        lastActiveDate: todayStr,
+      });
+    }
+
     if (newIsCompleted) {
       await ctx.db.insert("notifications", {
         userId: identity.subject,
         title: "🎉 Task Completed!",
-        message: `Task completed: "${task.text}"`,
+        message: `Task completed: "${task.text}" (+${xpAmount} XP)`,
         type: "task",
         severity: "info",
         isRead: false,
@@ -97,6 +173,81 @@ export const toggle = mutation({
         createdAt: Date.now(),
       });
     }
+  },
+});
+
+// Update subtasks for a task
+export const updateSubtasks = mutation({
+  args: {
+    id: v.id("tasks"),
+    subtasks: v.array(
+      v.object({
+        id: v.string(),
+        text: v.string(),
+        isCompleted: v.boolean(),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    const task = await ctx.db.get(args.id);
+    if (!task || task.userId !== identity.subject) {
+      throw new Error("Unauthorized");
+    }
+
+    await ctx.db.patch(args.id, { subtasks: args.subtasks });
+  },
+});
+
+// Record completed Pomodoro Focus Session & award bonus XP
+export const completeFocusSession = mutation({
+  args: {
+    taskId: v.optional(v.id("tasks")),
+    durationMinutes: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    const bonusXp = 100;
+    const stats = await ctx.db
+      .query("userStats")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .first();
+
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    if (!stats) {
+      await ctx.db.insert("userStats", {
+        userId: identity.subject,
+        xp: bonusXp,
+        level: 1,
+        streakCount: 1,
+        lastActiveDate: todayStr,
+        focusSessionsCompleted: 1,
+      });
+    } else {
+      const newXp = stats.xp + bonusXp;
+      await ctx.db.patch(stats._id, {
+        xp: newXp,
+        level: Math.floor(newXp / 250) + 1,
+        focusSessionsCompleted: (stats.focusSessionsCompleted ?? 0) + 1,
+        lastActiveDate: todayStr,
+      });
+    }
+
+    await ctx.db.insert("notifications", {
+      userId: identity.subject,
+      title: "🧠 Focus Session Complete!",
+      message: `Completed a ${args.durationMinutes}-min Focus Block (+${bonusXp} XP)!`,
+      type: "task",
+      severity: "info",
+      isRead: false,
+      linkUrl: "/tasks",
+      createdAt: Date.now(),
+    });
   },
 });
 
@@ -116,7 +267,6 @@ export const resetDailyRoutines = mutation({
       )
       .collect();
 
-    // Reset all routines to incomplete and record lastCompleted timestamp
     await Promise.all(
       routines
         .filter((r) => r.isCompleted)
@@ -135,7 +285,6 @@ export const resetDailyRoutines = mutation({
 export const getLastRoutineReset = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    // Find the most recent lastCompleted among routines
     const routines = await ctx.db
       .query("tasks")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))

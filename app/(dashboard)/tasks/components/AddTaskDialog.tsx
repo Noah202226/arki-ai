@@ -12,6 +12,7 @@ import {
   Loader2,
   AlignLeft,
   Tag,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +48,13 @@ const PRIORITIES = [
   },
 ] as const;
 
+const TIME_ESTIMATES = [
+  { value: 15, label: "15m" },
+  { value: 30, label: "30m" },
+  { value: 60, label: "1h" },
+  { value: 120, label: "2h+" },
+];
+
 const FREQUENCIES = [
   { value: "daily", label: "Daily" },
   { value: "weekly", label: "Weekly" },
@@ -57,7 +65,6 @@ export function AddTaskDialog({
   defaultType = "task",
   onClose,
 }: AddTaskDialogProps) {
-  // ✅ ALL hooks must be called before any early return
   const { user } = useUser();
   const createTask = useMutation(api.tasks.create);
 
@@ -66,11 +73,11 @@ export function AddTaskDialog({
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [category, setCategory] = useState("Personal");
+  const [estimatedMinutes, setEstimatedMinutes] = useState<number | undefined>(30);
   const [frequency, setFrequency] = useState<"daily" | "weekly">("daily");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // ✅ Early return AFTER all hooks
   if (!open) return null;
 
   const reset = () => {
@@ -78,6 +85,7 @@ export function AddTaskDialog({
     setDescription("");
     setPriority("medium");
     setCategory("Personal");
+    setEstimatedMinutes(30);
     setFrequency("daily");
     setError("");
     setType(defaultType);
@@ -105,6 +113,7 @@ export function AddTaskDialog({
         type,
         priority,
         category,
+        estimatedMinutes,
         frequency: type === "routine" ? frequency : undefined,
         isCompleted: false,
         isDeleted: false,
@@ -121,24 +130,20 @@ export function AddTaskDialog({
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
         onClick={handleClose}
       />
 
-      {/* Dialog */}
       <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none mb-20 sm:mb-0">
         <div
-          className="pointer-events-auto w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl"
+          className="pointer-events-auto w-full sm:max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Drag handle — mobile only */}
           <div className="flex justify-center pt-3 pb-1 sm:hidden">
-            <div className="w-10 h-1 rounded-full bg-[#e0dbd4]" />
+            <div className="w-10 h-1 rounded-full bg-[#e0dbd4] dark:bg-slate-800" />
           </div>
 
-          {/* Header */}
           <div className="bg-[#1a1a2e] px-6 py-5 rounded-t-3xl sm:rounded-t-2xl flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2 mb-1">
@@ -162,17 +167,16 @@ export function AddTaskDialog({
             </button>
           </div>
 
-          {/* Type toggle */}
           <div className="px-6 pt-5">
-            <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-[#f5f2ed] rounded-xl">
+            <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-[#f5f2ed] dark:bg-slate-950 rounded-xl">
               <button
                 type="button"
                 onClick={() => setType("task")}
                 className={cn(
                   "flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-all",
                   type === "task"
-                    ? "bg-white shadow-sm text-[#ff6b35]"
-                    : "text-[#1a1a2e]/40 hover:text-[#1a1a2e]/60",
+                    ? "bg-white dark:bg-slate-800 shadow-sm text-[#ff6b35]"
+                    : "text-[#1a1a2e]/40 dark:text-slate-400 hover:text-[#1a1a2e]/60",
                 )}
               >
                 <Target className="w-3.5 h-3.5" /> Objective
@@ -183,8 +187,8 @@ export function AddTaskDialog({
                 className={cn(
                   "flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-all",
                   type === "routine"
-                    ? "bg-white shadow-sm text-[#34d399]"
-                    : "text-[#1a1a2e]/40 hover:text-[#1a1a2e]/60",
+                    ? "bg-white dark:bg-slate-800 shadow-sm text-[#34d399]"
+                    : "text-[#1a1a2e]/40 dark:text-slate-400 hover:text-[#1a1a2e]/60",
                 )}
               >
                 <Repeat className="w-3.5 h-3.5" /> Routine
@@ -192,11 +196,9 @@ export function AddTaskDialog({
             </div>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="px-6 pb-6 pt-4 space-y-4">
-            {/* Title */}
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]/40 mb-1.5 block">
+              <label className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]/40 dark:text-slate-400 mb-1.5 block">
                 Title <span className="text-[#ff6b35]">*</span>
               </label>
               <input
@@ -212,11 +214,11 @@ export function AddTaskDialog({
                     : "e.g. Submit report, Call client..."
                 }
                 className={cn(
-                  "w-full px-4 py-3 rounded-xl border text-sm font-medium text-[#1a1a2e] placeholder:text-[#1a1a2e]/25",
-                  "bg-[#f5f2ed] focus:bg-white focus:outline-none transition-colors",
+                  "w-full px-4 py-3 rounded-xl border text-sm font-medium text-[#1a1a2e] dark:text-slate-100 placeholder:text-[#1a1a2e]/25",
+                  "bg-[#f5f2ed] dark:bg-slate-950 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors",
                   error
                     ? "border-red-300 focus:border-red-400"
-                    : "border-[#e0dbd4] focus:border-[#1a1a2e]/30",
+                    : "border-[#e0dbd4] dark:border-slate-800 focus:border-[#1a1a2e]/30",
                 )}
                 autoFocus
               />
@@ -227,11 +229,10 @@ export function AddTaskDialog({
               )}
             </div>
 
-            {/* Description */}
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]/40 mb-1.5 flex items-center gap-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]/40 dark:text-slate-400 mb-1.5 flex items-center gap-1.5">
                 <AlignLeft className="w-3 h-3" /> Description
-                <span className="normal-case font-normal text-[#1a1a2e]/25">
+                <span className="normal-case font-normal text-[#1a1a2e]/25 dark:text-slate-500">
                   (optional)
                 </span>
               </label>
@@ -240,15 +241,37 @@ export function AddTaskDialog({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Add details or notes..."
                 rows={2}
-                className="w-full px-4 py-3 rounded-xl border border-[#e0dbd4] focus:border-[#1a1a2e]/30 text-sm font-medium text-[#1a1a2e] placeholder:text-[#1a1a2e]/25 bg-[#f5f2ed] focus:bg-white focus:outline-none transition-colors resize-none"
+                className="w-full px-4 py-3 rounded-xl border border-[#e0dbd4] dark:border-slate-800 focus:border-[#1a1a2e]/30 text-sm font-medium text-[#1a1a2e] dark:text-slate-100 bg-[#f5f2ed] dark:bg-slate-950 focus:outline-none resize-none"
               />
             </div>
 
-            {/* Priority + Category row */}
+            {/* Estimated Time */}
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]/40 dark:text-slate-400 mb-1.5 flex items-center gap-1">
+                <Clock className="w-3 h-3 text-[#ff6b35]" /> Estimated Duration
+              </label>
+              <div className="grid grid-cols-4 gap-1.5">
+                {TIME_ESTIMATES.map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setEstimatedMinutes(t.value)}
+                    className={cn(
+                      "py-2 rounded-lg text-xs font-bold transition-all border",
+                      estimatedMinutes === t.value
+                        ? "bg-[#ff6b35]/10 border-[#ff6b35] text-[#ff6b35]"
+                        : "border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 bg-[#f5f2ed] dark:bg-slate-950"
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
-              {/* Priority */}
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]/40 mb-1.5 block">
+                <label className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]/40 dark:text-slate-400 mb-1.5 block">
                   Priority
                 </label>
                 <div className="flex gap-1.5">
@@ -261,7 +284,7 @@ export function AddTaskDialog({
                         "flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all border",
                         priority === p.value
                           ? "border-transparent"
-                          : "border-[#e8e4de] text-[#1a1a2e]/30 bg-white hover:border-[#d0cbc4]",
+                          : "border-[#e8e4de] dark:border-slate-800 text-[#1a1a2e]/30 dark:text-slate-500 bg-white dark:bg-slate-950",
                       )}
                       style={
                         priority === p.value
@@ -275,16 +298,15 @@ export function AddTaskDialog({
                 </div>
               </div>
 
-              {/* Category */}
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]/40 mb-1.5 flex items-center gap-1">
+                <label className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]/40 dark:text-slate-400 mb-1.5 flex items-center gap-1">
                   <Tag className="w-3 h-3" /> Category
                 </label>
                 <div className="relative">
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-[#e0dbd4] bg-[#f5f2ed] text-sm font-bold text-[#1a1a2e] focus:outline-none focus:border-[#1a1a2e]/30 appearance-none cursor-pointer"
+                    className="w-full px-3 py-2.5 rounded-xl border border-[#e0dbd4] dark:border-slate-800 bg-[#f5f2ed] dark:bg-slate-950 text-sm font-bold text-[#1a1a2e] dark:text-slate-100 focus:outline-none appearance-none cursor-pointer"
                   >
                     {CATEGORIES.map((c) => (
                       <option key={c} value={c}>
@@ -292,18 +314,17 @@ export function AddTaskDialog({
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#1a1a2e]/30 pointer-events-none" />
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#1a1a2e]/30 dark:text-slate-500 pointer-events-none" />
                 </div>
               </div>
             </div>
 
-            {/* Frequency — routines only */}
             {type === "routine" && (
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]/40 mb-1.5 block">
+                <label className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#1a1a2e]/40 dark:text-slate-400 mb-1.5 block">
                   Frequency
                 </label>
-                <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-[#f5f2ed] rounded-xl">
+                <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-[#f5f2ed] dark:bg-slate-950 rounded-xl">
                   {FREQUENCIES.map((f) => (
                     <button
                       key={f.value}
@@ -312,8 +333,8 @@ export function AddTaskDialog({
                       className={cn(
                         "py-2.5 rounded-lg text-xs font-bold transition-all",
                         frequency === f.value
-                          ? "bg-white shadow-sm text-[#34d399]"
-                          : "text-[#1a1a2e]/40 hover:text-[#1a1a2e]/60",
+                          ? "bg-white dark:bg-slate-800 shadow-sm text-[#34d399]"
+                          : "text-[#1a1a2e]/40 dark:text-slate-400 hover:text-[#1a1a2e]/60",
                       )}
                     >
                       {f.label}
@@ -323,7 +344,6 @@ export function AddTaskDialog({
               </div>
             )}
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading || !text.trim()}

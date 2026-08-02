@@ -7,6 +7,8 @@ interface RoutinesListProps {
   completedCount: number;
   onToggle: (args: { id: Id<"tasks"> }) => void;
   onDelete: (args: { id: Id<"tasks"> }) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onStartFocus?: (task: any) => void;
 }
 
 export function RoutinesList({
@@ -14,6 +16,7 @@ export function RoutinesList({
   completedCount,
   onToggle,
   onDelete,
+  onStartFocus,
 }: RoutinesListProps) {
   return (
     <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 mb-20 sm:mb-0">
@@ -35,8 +38,8 @@ export function RoutinesList({
 
       <div className="space-y-2">
         {routines.length === 0 && (
-          <div className="text-center py-10 text-[#1a1a2e]/20 text-sm font-medium">
-            No routines yet
+          <div className="text-center py-10 text-[#1a1a2e]/20 dark:text-slate-500 text-sm font-medium">
+            No routines match this filter
           </div>
         )}
         {routines.map((routine) => (
@@ -45,6 +48,7 @@ export function RoutinesList({
             task={routine}
             onToggle={onToggle}
             onDelete={onDelete}
+            onStartFocus={onStartFocus}
             isRoutine
           />
         ))}

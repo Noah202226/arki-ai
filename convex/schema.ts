@@ -18,6 +18,17 @@ export default defineSchema({
     frequency: v.optional(v.union(v.literal("daily"), v.literal("weekly"))),
     lastCompleted: v.optional(v.number()),
     category: v.optional(v.string()),
+    estimatedMinutes: v.optional(v.number()),
+    xpValue: v.optional(v.number()),
+    subtasks: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          text: v.string(),
+          isCompleted: v.boolean(),
+        })
+      )
+    ),
   }).index("by_userId", ["userId"]),
 
   // 1. FINANCIALS TABLE (Payables & Subscriptions)
@@ -224,4 +235,14 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_endpoint", ["endpoint"]),
+
+  // 9. USER STATS & DISCIPLINE GAMIFICATION
+  userStats: defineTable({
+    userId: v.string(),
+    xp: v.number(),
+    level: v.number(),
+    streakCount: v.number(),
+    lastActiveDate: v.optional(v.string()), // Format: YYYY-MM-DD
+    focusSessionsCompleted: v.optional(v.number()),
+  }).index("by_userId", ["userId"]),
 });

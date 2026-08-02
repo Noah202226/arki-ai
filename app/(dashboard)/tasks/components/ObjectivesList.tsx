@@ -7,6 +7,8 @@ interface ObjectivesListProps {
   completedCount: number;
   onToggle: (args: { id: Id<"tasks"> }) => void;
   onDelete: (args: { id: Id<"tasks"> }) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onStartFocus?: (task: any) => void;
 }
 
 export function ObjectivesList({
@@ -14,6 +16,7 @@ export function ObjectivesList({
   completedCount,
   onToggle,
   onDelete,
+  onStartFocus,
 }: ObjectivesListProps) {
   return (
     <div className="bg-[#f5f2ed] dark:bg-slate-950 p-4 sm:p-6 border-b lg:border-b-0 border-[#e0dbd4] dark:border-slate-800">
@@ -35,8 +38,8 @@ export function ObjectivesList({
 
       <div className="space-y-2">
         {tasks.length === 0 && (
-          <div className="text-center py-10 text-[#1a1a2e]/20 text-sm font-medium">
-            No objectives yet
+          <div className="text-center py-10 text-[#1a1a2e]/20 dark:text-slate-500 text-sm font-medium">
+            No objectives match this filter
           </div>
         )}
         {tasks.map((task) => (
@@ -45,6 +48,7 @@ export function ObjectivesList({
             task={task}
             onToggle={onToggle}
             onDelete={onDelete}
+            onStartFocus={onStartFocus}
           />
         ))}
       </div>
