@@ -250,7 +250,19 @@ export default defineSchema({
   budgets: defineTable({
     userId: v.string(),
     category: v.string(),
+    categoryId: v.optional(v.id("categories")),
     monthlyCap: v.number(),
+    rolloverAmount: v.optional(v.number()),
     updatedAt: v.number(),
+  }).index("by_userId", ["userId"]),
+
+  // 11. BUDGET TRANSFERS LOG TABLE
+  budgetTransfers: defineTable({
+    userId: v.string(),
+    fromCategory: v.string(),
+    toCategory: v.string(),
+    amount: v.number(),
+    transferredAt: v.number(),
+    note: v.optional(v.string()),
   }).index("by_userId", ["userId"]),
 });
