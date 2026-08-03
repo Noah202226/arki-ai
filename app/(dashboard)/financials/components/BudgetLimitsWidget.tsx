@@ -23,6 +23,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import {
   PieChart,
   Plus,
+  Minus,
   AlertTriangle,
   CheckCircle2,
   Sliders,
@@ -31,14 +32,19 @@ import {
   ArrowRightLeft,
   Coins,
   TrendingDown,
+  TrendingUp,
   ArrowRight,
   Eye,
   Pencil,
   Search,
   Receipt,
   Calendar,
-  CreditCard,
   Tag,
+  Scale,
+  History,
+  ArrowUpRight,
+  ArrowDownRight,
+  Layers,
 } from "lucide-react";
 
 // Helper keyword alias mapping for intelligent transaction category matching
@@ -55,9 +61,12 @@ export function BudgetLimitsWidget() {
   const budgets = useQuery(api.budgets.getBudgets) || [];
   const transactions = useQuery(api.financials.getTransactions) || [];
   const categories = useQuery(api.categories.getCategories, {}) || [];
+  const budgetTransfers = useQuery(api.budgets.getBudgetTransfers) || [];
+
   const setCapMutation = useMutation(api.budgets.setBudgetCap);
   const removeCapMutation = useMutation(api.budgets.removeBudgetCap);
   const transferMutation = useMutation(api.budgets.transferBudgetBalance);
+  const adjustCapMutation = useMutation(api.budgets.adjustBudgetCapAmount);
   const deleteTransactionMutation = useMutation(api.financials.softDeleteTransaction);
 
   // Detail Modal State
@@ -68,7 +77,7 @@ export function BudgetLimitsWidget() {
   const [isEditingCapInline, setIsEditingCapInline] = useState(false);
   const [inlineCapInput, setInlineCapInput] = useState<string>("");
 
-  // Set Budget Cap Modal State
+  // Set Base Budget Cap Modal State
   const [openModal, setOpenModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("Food & Dining");
   const [customCategory, setCustomCategory] = useState<string>("");
@@ -77,10 +86,17 @@ export function BudgetLimitsWidget() {
   // Transfer Saved Balance Modal State
   const [openTransferModal, setOpenTransferModal] = useState(false);
   const [transferFromCategory, setTransferFromCategory] = useState<string>("");
-  const [transferToCategory, setTransferToCategory] = useState<string>("Travel & Date");
+  const [transferToCategory, setTransferToCategory] = useState<string>("Travel & Vacation");
   const [customTargetCategory, setCustomTargetCategory] = useState<string>("");
   const [transferAmountInput, setTransferAmountInput] = useState<string>("");
   const [transferNoteInput, setTransferNoteInput] = useState<string>("");
+
+  // Add / Remove Cap Adjustment Modal State
+  const [openAdjustModal, setOpenAdjustModal] = useState(false);
+  const [adjustTargetCategory, setAdjustTargetCategory] = useState<string>("");
+  const [adjustAmountInput, setAdjustAmountInput] = useState<string>("1000");
+  const [adjustActionType, setAdjustActionType] = useState<"add" | "remove">("add");
+  const [adjustReasonInput, setAdjustReasonInput] = useState<string>("");
 
   // Calculate current month's spending & mapped transactions per budget category using smart matching
   const { monthlySpendingMap, monthlyTransactionsMap } = useMemo(() => {
@@ -137,13 +153,15 @@ export function BudgetLimitsWidget() {
       .map((b) => {
         const spent = monthlySpendingMap.get(b.category) || 0;
         const rollover = b.rolloverAmount || 0;
-        const effectiveCap = (b.monthlyCap || 0) + rollover;
+        const baseCap = b.monthlyCap || 0;
+        const effectiveCap = baseCap + rollover;
         const capForPct = Math.max(1, effectiveCap);
         const remaining = effectiveCap - spent;
         const pct = Math.min(100, Math.round((spent / capForPct) * 100));
 
         return {
           ...b,
+          baseCap,
           spent,
           rollover,
           effectiveCap,
@@ -155,6 +173,36 @@ export function BudgetLimitsWidget() {
       })
       .sort((a, b) => b.pct - a.pct);
   }, [budgets, monthlySpendingMap]);
+
+  // Overall Total Added / Removed Cap Metrics
+  const capSummary = useMemo(() => {
+    let totalBaseCap = 0;
+    let totalAdded = 0;
+    let totalRemoved = 0;
+    let totalEffectiveCap = 0;
+    let totalSpent = 0;
+
+    budgetItems.forEach((item) => {
+      totalBaseCap += item.baseCap;
+      totalEffectiveCap += item.effectiveCap;
+      totalSpent += item.spent;
+
+      if (item.rollover > 0) {
+        totalAdded += item.rollover;
+      } else if (item.rollover < 0) {
+        totalRemoved += Math.abs(item.rollover);
+      }
+    });
+
+    return {
+      totalBaseCap,
+      totalAdded,
+      totalRemoved,
+      totalEffectiveCap,
+      totalSpent,
+      netAdjustment: totalAdded - totalRemoved,
+    };
+  }, [budgetItems]);
 
   const handleSaveBudget = async () => {
     const finalCategory =
@@ -193,9 +241,47 @@ export function BudgetLimitsWidget() {
     }
   };
 
+  const openAdjustDialogForCategory = (category: string, action: "add" | "remove") => {
+    setAdjustTargetCategory(category);
+    setAdjustActionType(action);
+    setAdjustAmountInput("1000");
+    setOpenAdjustModal(true);
+  };
+
+  const handleExecuteAdjustCap = async () => {
+    const num = parseFloat(adjustAmountInput);
+    if (!adjustTargetCategory) {
+      toast.error("Please select a target category.");
+      return;
+    }
+    if (isNaN(num) || num <= 0) {
+      toast.error("Please enter a valid adjustment amount greater than 0.");
+      return;
+    }
+
+    const delta = adjustActionType === "add" ? num : -num;
+
+    try {
+      await adjustCapMutation({
+        category: adjustTargetCategory,
+        amountDelta: delta,
+        reason: adjustReasonInput.trim() || undefined,
+      });
+      toast.success(
+        `Successfully ${adjustActionType === "add" ? "added" : "removed"} ₱${num.toLocaleString()} ${
+          adjustActionType === "add" ? "to" : "from"
+        } "${adjustTargetCategory}" cap!`
+      );
+      setOpenAdjustModal(false);
+      setAdjustReasonInput("");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to adjust budget cap.";
+      toast.error(msg);
+    }
+  };
+
   const openTransferDialogForCategory = (item: (typeof budgetItems)[0]) => {
     setTransferFromCategory(item.category);
-    // Suggest remaining amount if positive
     const initialAmount = item.remaining > 0 ? item.remaining.toString() : "";
     setTransferAmountInput(initialAmount);
     setOpenTransferModal(true);
@@ -291,29 +377,43 @@ export function BudgetLimitsWidget() {
             <span className="p-1.5 rounded-xl bg-[#ff6b35]/15 text-[#ff6b35]">
               <PieChart className="w-4 h-4" />
             </span>
-            Monthly Category Budget Caps &amp; Rollover
+            Monthly Category Budget Caps &amp; Reallocations
           </h3>
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-            Track expenses dynamically per category, view remaining balances, and transfer saved funds between tabs.
+            Flexible spending caps per category. Dynamically add/remove cap amounts or reallocate saved funds.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {budgetItems.length > 0 && (
-            <Button
-              onClick={() => {
-                const firstWithSavings = budgetItems.find((b) => b.remaining > 0);
-                if (firstWithSavings) {
-                  openTransferDialogForCategory(firstWithSavings);
-                } else if (budgetItems[0]) {
-                  openTransferDialogForCategory(budgetItems[0]);
-                }
-              }}
-              variant="outline"
-              className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs rounded-xl gap-1.5"
-            >
-              <ArrowRightLeft className="w-3.5 h-3.5 text-[#ff6b35]" /> Transfer Saved
-            </Button>
+            <>
+              <Button
+                onClick={() => {
+                  if (budgetItems[0]) {
+                    openAdjustDialogForCategory(budgetItems[0].category, "add");
+                  }
+                }}
+                variant="outline"
+                className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 font-bold text-xs rounded-xl gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" /> Adjust Cap (+/-)
+              </Button>
+
+              <Button
+                onClick={() => {
+                  const firstWithSavings = budgetItems.find((b) => b.remaining > 0);
+                  if (firstWithSavings) {
+                    openTransferDialogForCategory(firstWithSavings);
+                  } else if (budgetItems[0]) {
+                    openTransferDialogForCategory(budgetItems[0]);
+                  }
+                }}
+                variant="outline"
+                className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs rounded-xl gap-1.5"
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5 text-[#ff6b35]" /> Transfer Saved
+              </Button>
+            </>
           )}
 
           <Button
@@ -373,28 +473,36 @@ export function BudgetLimitsWidget() {
 
                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                   <button
-                    onClick={() => {
-                      setSelectedDetailCategory(item.category);
-                      setInlineCapInput((item.monthlyCap || 0).toString());
-                    }}
-                    className="opacity-90 hover:opacity-100 bg-slate-200/70 dark:bg-slate-700/60 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-lg transition-colors flex items-center gap-1"
-                    title="View transactions & detailed breakdown"
+                    onClick={() => openAdjustDialogForCategory(item.category, "add")}
+                    className="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md transition-colors flex items-center gap-0.5"
+                    title="Add extra cap amount"
                   >
-                    <Eye className="w-3 h-3 text-[#ff6b35]" /> View Details
+                    <Plus className="w-3 h-3" /> Cap
                   </button>
 
                   <button
-                    onClick={() => openTransferDialogForCategory(item)}
-                    className="opacity-90 hover:opacity-100 bg-slate-200/70 dark:bg-slate-700/60 hover:bg-[#ff6b35]/20 text-slate-600 dark:text-slate-300 hover:text-[#ff6b35] text-[10px] font-bold px-2 py-0.5 rounded-lg transition-colors flex items-center gap-1"
-                    title="Transfer saved remaining amount"
+                    onClick={() => openAdjustDialogForCategory(item.category, "remove")}
+                    className="bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md transition-colors flex items-center gap-0.5"
+                    title="Reduce/remove cap amount"
                   >
-                    <ArrowRightLeft className="w-3 h-3" /> Transfer
+                    <Minus className="w-3 h-3" /> Cap
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setSelectedDetailCategory(item.category);
+                      setInlineCapInput((item.baseCap || 0).toString());
+                    }}
+                    className="bg-slate-200/70 dark:bg-slate-700/60 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-[10px] font-bold px-1.5 py-0.5 rounded-md transition-colors flex items-center gap-1"
+                    title="View details & transactions"
+                  >
+                    <Eye className="w-3 h-3 text-[#ff6b35]" />
                   </button>
 
                   <button
                     onClick={() => handleRemove(item._id)}
                     className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 transition-opacity p-1"
-                    title="Remove cap"
+                    title="Delete budget limit"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -412,11 +520,21 @@ export function BudgetLimitsWidget() {
 
                 <div className="text-center">
                   <span className="text-[9px] font-bold uppercase text-slate-400 block">
-                    {item.rollover !== 0 ? "Total Cap (Adj)" : "Budget Cap"}
+                    {item.rollover !== 0 ? "Total Cap (Adj)" : "Base Cap"}
                   </span>
                   <span className="text-xs sm:text-sm font-mono font-bold text-slate-700 dark:text-slate-300">
                     ₱{item.effectiveCap.toLocaleString()}
                   </span>
+                  {item.rollover !== 0 && (
+                    <span
+                      className={cn(
+                        "text-[9px] font-mono font-bold block -mt-0.5",
+                        item.rollover > 0 ? "text-emerald-500" : "text-rose-400"
+                      )}
+                    >
+                      {item.rollover > 0 ? `(+₱${item.rollover.toLocaleString()})` : `(-₱${Math.abs(item.rollover).toLocaleString()})`}
+                    </span>
+                  )}
                 </div>
 
                 <div className="text-right">
@@ -469,15 +587,207 @@ export function BudgetLimitsWidget() {
         </div>
       )}
 
-      {/* DIALOG TO SET BUDGET CAP */}
+      {/* SUMMARY SECTION: TOTAL ADDED / REMOVED CAP BREAKDOWN */}
+      {budgetItems.length > 0 && (
+        <div className="mt-8 pt-6 border-t border-slate-200/80 dark:border-slate-800 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Scale className="w-4 h-4 text-[#ff6b35]" />
+                Budget Limit Adjustments &amp; Cap Summary
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Overview of base limits vs. total added (+) and removed (-) cap adjustments across all categories.
+              </p>
+            </div>
+          </div>
+
+          {/* 4 SUMMARY STAT CARDS */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* BASE CAP TOTAL */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800">
+              <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">
+                Total Base Caps
+              </span>
+              <span className="text-base sm:text-lg font-mono font-black text-slate-800 dark:text-slate-100 mt-0.5 block">
+                ₱{capSummary.totalBaseCap.toLocaleString()}
+              </span>
+              <span className="text-[10px] text-slate-400 mt-0.5 block">Original monthly limits</span>
+            </div>
+
+            {/* TOTAL ADDED CAP */}
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+              <span className="text-[10px] font-extrabold uppercase text-emerald-600 dark:text-emerald-400 tracking-wider flex items-center gap-1">
+                <ArrowUpRight className="w-3 h-3" /> Total Added (+)
+              </span>
+              <span className="text-base sm:text-lg font-mono font-black text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+                +₱{capSummary.totalAdded.toLocaleString()}
+              </span>
+              <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 mt-0.5 block">
+                Added cap &amp; transfers in
+              </span>
+            </div>
+
+            {/* TOTAL REMOVED CAP */}
+            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+              <span className="text-[10px] font-extrabold uppercase text-rose-600 dark:text-rose-400 tracking-wider flex items-center gap-1">
+                <ArrowDownRight className="w-3 h-3" /> Total Removed (-)
+              </span>
+              <span className="text-base sm:text-lg font-mono font-black text-rose-600 dark:text-rose-400 mt-0.5 block">
+                -₱{capSummary.totalRemoved.toLocaleString()}
+              </span>
+              <span className="text-[10px] text-rose-600/80 dark:text-rose-400/80 mt-0.5 block">
+                Reduced cap &amp; transfers out
+              </span>
+            </div>
+
+            {/* NET EFFECTIVE CAP */}
+            <div className="p-3.5 rounded-2xl bg-[#ff6b35]/10 border border-[#ff6b35]/25">
+              <span className="text-[10px] font-extrabold uppercase text-[#ff6b35] tracking-wider block">
+                Net Effective Cap
+              </span>
+              <span className="text-base sm:text-lg font-mono font-black text-[#ff6b35] mt-0.5 block">
+                ₱{capSummary.totalEffectiveCap.toLocaleString()}
+              </span>
+              <span className="text-[10px] text-[#ff6b35]/80 mt-0.5 block">
+                Active monthly spending ceiling
+              </span>
+            </div>
+          </div>
+
+          {/* PER CATEGORY CAP ADJUSTMENTS TABLE / LIST */}
+          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden bg-slate-50/50 dark:bg-slate-800/30">
+            <div className="p-3 bg-slate-100/70 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs font-extrabold text-slate-700 dark:text-slate-300">
+              <span className="flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-[#ff6b35]" /> Per-Category Added / Removed Cap Allocations
+              </span>
+              <span className="text-[10px] font-semibold text-slate-400">
+                {budgetItems.length} budget limit(s)
+              </span>
+            </div>
+
+            <div className="divide-y divide-slate-200/60 dark:divide-slate-800">
+              {budgetItems.map((item) => (
+                <div
+                  key={item._id}
+                  className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-white dark:hover:bg-slate-800/60 transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-[180px]">
+                    <div className="p-2 rounded-xl bg-slate-200/60 dark:bg-slate-700/50 text-slate-700 dark:text-slate-200 font-bold shrink-0">
+                      <Tag className="w-3.5 h-3.5 text-[#ff6b35]" />
+                    </div>
+                    <div>
+                      <span className="font-extrabold text-slate-900 dark:text-slate-100 block">
+                        {item.category}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400">
+                        Base: ₱{item.baseCap.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* ADJUSTMENT BADGE */}
+                  <div className="flex items-center gap-3">
+                    <div className="text-left sm:text-right min-w-[120px]">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Cap Adjustment</span>
+                      {item.rollover > 0 ? (
+                        <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 flex items-center sm:justify-end gap-0.5">
+                          <ArrowUpRight className="w-3 h-3" /> +₱{item.rollover.toLocaleString()} Added
+                        </span>
+                      ) : item.rollover < 0 ? (
+                        <span className="font-mono font-black text-rose-500 flex items-center sm:justify-end gap-0.5">
+                          <ArrowDownRight className="w-3 h-3" /> -₱{Math.abs(item.rollover).toLocaleString()} Removed
+                        </span>
+                      ) : (
+                        <span className="font-mono text-slate-400 text-[11px] flex items-center sm:justify-end">
+                          No Adjustment (₱0)
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-left sm:text-right min-w-[110px]">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Effective Cap</span>
+                      <span className="font-mono font-black text-slate-900 dark:text-slate-100">
+                        ₱{item.effectiveCap.toLocaleString()}
+                      </span>
+                    </div>
+
+                    {/* QUICK ACTION BUTTONS */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        onClick={() => openAdjustDialogForCategory(item.category, "add")}
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-[10px] font-bold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 rounded-lg gap-0.5"
+                      >
+                        + Add Cap
+                      </Button>
+                      <Button
+                        onClick={() => openAdjustDialogForCategory(item.category, "remove")}
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-[10px] font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-lg gap-0.5"
+                      >
+                        - Remove Cap
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* TRANSFERS & CAP ADJUSTMENTS LOG HISTORY */}
+          {budgetTransfers.length > 0 && (
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 space-y-3 bg-slate-50/40 dark:bg-slate-800/20">
+              <h5 className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <History className="w-3.5 h-3.5 text-[#ff6b35]" /> Recent Budget Transfers &amp; Cap Adjustments Log
+              </h5>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {budgetTransfers.slice(0, 10).map((t) => (
+                  <div
+                    key={t._id}
+                    className="p-2.5 rounded-xl bg-white dark:bg-slate-800/70 border border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs gap-3"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="p-1.5 rounded-lg bg-[#ff6b35]/10 text-[#ff6b35] shrink-0">
+                        <ArrowRightLeft className="w-3 h-3" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                          {t.fromCategory} <ArrowRight className="w-3 h-3 inline mx-1 text-slate-400" /> {t.toCategory}
+                        </p>
+                        {t.note && (
+                          <p className="text-[10px] text-slate-400 truncate mt-0.5">{t.note}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 block">
+                        ₱{t.amount.toLocaleString()}
+                      </span>
+                      <span className="text-[9px] font-semibold text-slate-400">
+                        {format(new Date(t.transferredAt), "MMM dd, hh:mm a")}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* DIALOG TO SET BASE BUDGET CAP */}
       <Dialog open={openModal} onOpenChange={setOpenModal}>
         <DialogContent className="w-[94vw] sm:max-w-md bg-slate-900 border-slate-800 text-slate-100 rounded-2xl p-6">
           <DialogHeader>
             <DialogTitle className="text-lg font-extrabold text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#ff6b35]" /> Set Monthly Category Budget Cap
+              <Sparkles className="w-5 h-5 text-[#ff6b35]" /> Set Base Monthly Category Budget Cap
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-400">
-              Define a maximum monthly spending limit for a specific expense category.
+              Define a maximum base monthly spending limit for a specific expense category.
             </DialogDescription>
           </DialogHeader>
 
@@ -518,7 +828,7 @@ export function BudgetLimitsWidget() {
             )}
 
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-slate-300">Monthly Budget Cap (₱)</Label>
+              <Label className="text-xs font-bold text-slate-300">Base Monthly Budget Cap (₱)</Label>
               <Input
                 type="number"
                 value={monthlyCapInput}
@@ -542,6 +852,129 @@ export function BudgetLimitsWidget() {
               className="bg-[#ff6b35] hover:bg-[#e05a2b] text-white font-extrabold text-xs rounded-xl"
             >
               Save Cap
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIALOG TO ADD / REMOVE CAP ADJUSTMENT AMOUNT */}
+      <Dialog open={openAdjustModal} onOpenChange={setOpenAdjustModal}>
+        <DialogContent className="w-[94vw] sm:max-w-md bg-slate-900 border-slate-800 text-slate-100 rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-extrabold text-white flex items-center gap-2">
+              <Scale className="w-5 h-5 text-emerald-400" /> Adjust Category Budget Cap
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-400">
+              Increase or decrease the active monthly spending limit for a budget category.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            {/* ACTION TYPE SELECTOR (ADD OR REMOVE CAP) */}
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-slate-300">Adjustment Type</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAdjustActionType("add")}
+                  className={cn(
+                    "p-2.5 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all",
+                    adjustActionType === "add"
+                      ? "bg-emerald-500/20 border-emerald-500 text-emerald-400"
+                      : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"
+                  )}
+                >
+                  <Plus className="w-4 h-4" /> Add Cap (+)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdjustActionType("remove")}
+                  className={cn(
+                    "p-2.5 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all",
+                    adjustActionType === "remove"
+                      ? "bg-rose-500/20 border-rose-500 text-rose-400"
+                      : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"
+                  )}
+                >
+                  <Minus className="w-4 h-4" /> Reduce Cap (-)
+                </button>
+              </div>
+            </div>
+
+            {/* TARGET CATEGORY */}
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-slate-300">Category to Adjust</Label>
+              <select
+                value={adjustTargetCategory}
+                onChange={(e) => setAdjustTargetCategory(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-xl p-2.5 outline-none focus:border-[#ff6b35]"
+              >
+                {budgetItems.map((b) => (
+                  <option key={b._id} value={b.category}>
+                    {b.category} (Current Net Cap: ₱{b.effectiveCap.toLocaleString()})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* AMOUNT TO ADD/REMOVE */}
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-slate-300">
+                Amount to {adjustActionType === "add" ? "Add (+)" : "Remove (-)"} (₱)
+              </Label>
+              <Input
+                type="number"
+                value={adjustAmountInput}
+                onChange={(e) => setAdjustAmountInput(e.target.value)}
+                placeholder="1000"
+                className="bg-slate-800 border-slate-700 text-xs rounded-xl text-white font-mono"
+              />
+
+              {/* QUICK CHIP PRESETS */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                {["500", "1000", "2000", "5000"].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setAdjustAmountInput(preset)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-500 text-[11px] font-mono text-slate-300 font-bold"
+                  >
+                    ₱{parseInt(preset).toLocaleString()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* REASON / NOTE */}
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-slate-300">Reason / Note (Optional)</Label>
+              <Input
+                value={adjustReasonInput}
+                onChange={(e) => setAdjustReasonInput(e.target.value)}
+                placeholder="e.g. Added emergency food cap adjustment"
+                className="bg-slate-800 border-slate-700 text-xs rounded-xl text-white"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+            <Button
+              variant="ghost"
+              onClick={() => setOpenAdjustModal(false)}
+              className="text-xs font-bold text-slate-400 hover:text-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleExecuteAdjustCap}
+              className={cn(
+                "text-white font-extrabold text-xs rounded-xl gap-1.5",
+                adjustActionType === "add"
+                  ? "bg-emerald-500 hover:bg-emerald-600"
+                  : "bg-rose-500 hover:bg-rose-600"
+              )}
+            >
+              Confirm {adjustActionType === "add" ? "Cap Increase" : "Cap Reduction"}
             </Button>
           </div>
         </DialogContent>
@@ -708,12 +1141,12 @@ export function BudgetLimitsWidget() {
                     <Button
                       onClick={() => {
                         setIsEditingCapInline(true);
-                        setInlineCapInput((selectedDetailBudgetItem.monthlyCap || 0).toString());
+                        setInlineCapInput((selectedDetailBudgetItem.baseCap || 0).toString());
                       }}
                       variant="outline"
                       className="border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl gap-1.5 shrink-0"
                     >
-                      <Pencil className="w-3.5 h-3.5 text-[#ff6b35]" /> Edit Budget Cap
+                      <Pencil className="w-3.5 h-3.5 text-[#ff6b35]" /> Edit Base Budget Cap
                     </Button>
                   ) : (
                     <div className="flex items-center gap-2 bg-slate-800/80 p-2 rounded-xl border border-slate-700">
@@ -751,7 +1184,7 @@ export function BudgetLimitsWidget() {
                     </p>
                   </div>
                   <div className="bg-slate-800/50 p-3 rounded-xl border border-slate-800">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Monthly Cap Limit</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Base Cap / Net Cap</span>
                     <p className="text-base font-mono font-bold text-slate-200 mt-0.5">
                       ₱{selectedDetailBudgetItem.effectiveCap.toLocaleString()}
                     </p>

@@ -156,3 +156,51 @@ export const getBudgetTransfers = query({
   },
 });
 
+// ADJUST: Manually add or remove budget cap adjustment amount for a category
+export const adjustBudgetCapAmount = mutation({
+  args: {
+    category: v.string(),
+    amountDelta: v.number(),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    const categoryTrimmed = args.category.trim();
+
+    const existing = await ctx.db
+      .query("budgets")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .filter((q) => q.eq(q.field("category"), categoryTrimmed))
+      .first();
+
+    if (existing) {
+      const currentRollover = existing.rolloverAmount || 0;
+      await ctx.db.patch(existing._id, {
+        rolloverAmount: currentRollover + args.amountDelta,
+        updatedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("budgets", {
+        userId: identity.subject,
+        category: categoryTrimmed,
+        monthlyCap: 0,
+        rolloverAmount: args.amountDelta,
+        updatedAt: Date.now(),
+      });
+    }
+
+    if (args.reason) {
+      await ctx.db.insert("budgetTransfers", {
+        userId: identity.subject,
+        fromCategory: args.amountDelta < 0 ? categoryTrimmed : "Manual Adjustment",
+        toCategory: args.amountDelta > 0 ? categoryTrimmed : "Cap Adjustment",
+        amount: Math.abs(args.amountDelta),
+        transferredAt: Date.now(),
+        note: args.reason,
+      });
+    }
+  },
+});
+
