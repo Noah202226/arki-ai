@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Wallet, CheckSquare, Settings } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
+import { Wallet, CheckSquare, Settings, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserNavButton } from "./components/user-nav-button";
 import { NotificationCenter } from "@/components/NotificationCenter";
@@ -13,6 +15,22 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { isLoaded, isSignedIn } = useUser();
+
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.push("/");
+    }
+  }, [isLoaded, isSignedIn, router]);
+
+  if (!isLoaded || !isSignedIn) {
+    return (
+      <div className="min-h-screen bg-[#fcfaf7] dark:bg-slate-950 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#ff6b35]" />
+      </div>
+    );
+  }
 
   const navItems = [
     { href: "/financials", icon: Wallet, label: "Financials" },
