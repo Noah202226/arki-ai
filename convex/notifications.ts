@@ -195,6 +195,53 @@ export const syncAutoReminders = mutation({
       }
     }
 
+    // 3. Check Tasks needing completion & Routines not done today
+    const userTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .filter((q) => q.not(q.eq(q.field("isDeleted"), true)))
+      .collect();
+
+    const incompleteTasks = userTasks.filter((t) => t.type === "task" && !t.isCompleted);
+    if (incompleteTasks.length > 0) {
+      const title = `Tasks Pending Completion (${incompleteTasks.length})`;
+      if (!recentTitles.has(title)) {
+        const sampleTaskNames = incompleteTasks.slice(0, 2).map((t) => t.text).join(", ");
+        const moreSuffix = incompleteTasks.length > 2 ? ` and ${incompleteTasks.length - 2} more` : "";
+        await ctx.db.insert("notifications", {
+          userId: identity.subject,
+          title,
+          message: `You have ${incompleteTasks.length} pending task(s) to complete today: ${sampleTaskNames}${moreSuffix}.`,
+          type: "task",
+          severity: "warning",
+          isRead: false,
+          linkUrl: "/tasks",
+          createdAt: now,
+        });
+        createdCount++;
+      }
+    }
+
+    const incompleteRoutines = userTasks.filter((t) => t.type === "routine" && !t.isCompleted);
+    if (incompleteRoutines.length > 0) {
+      const title = `Routine Alert: ${incompleteRoutines.length} Not Done Today`;
+      if (!recentTitles.has(title)) {
+        const sampleRoutineNames = incompleteRoutines.slice(0, 2).map((r) => r.text).join(", ");
+        const moreSuffix = incompleteRoutines.length > 2 ? ` and ${incompleteRoutines.length - 2} more` : "";
+        await ctx.db.insert("notifications", {
+          userId: identity.subject,
+          title,
+          message: `Don't forget your routine today! Yet to complete: ${sampleRoutineNames}${moreSuffix}.`,
+          type: "task",
+          severity: "info",
+          isRead: false,
+          linkUrl: "/tasks",
+          createdAt: now,
+        });
+        createdCount++;
+      }
+    }
+
     return { createdCount };
   },
 });
