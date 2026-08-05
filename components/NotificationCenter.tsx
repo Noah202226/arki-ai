@@ -51,11 +51,15 @@ export function NotificationCenter() {
   const unreadCount = data?.unreadCount || 0;
   const [seenNotifIds, setSeenNotifIds] = useState<Set<string>>(new Set());
 
-  // Trigger system OS banner for EVERY new incoming notification
+  // Trigger system OS banner for EVERY new incoming notification once
   useEffect(() => {
-    if (items.length > 0) {
-      items.forEach((item) => {
-        if (!seenNotifIds.has(item._id) && !item.isRead) {
+    if (items.length === 0) return;
+
+    let hasNew = false;
+    items.forEach((item) => {
+      if (!seenNotifIds.has(item._id)) {
+        hasNew = true;
+        if (!item.isRead) {
           if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
             navigator.serviceWorker?.getRegistration().then((reg) => {
               if (reg) {
@@ -74,10 +78,15 @@ export function NotificationCenter() {
             }).catch(() => {});
           }
         }
-      });
+      }
+    });
 
-      // Update seen set with all current item IDs
-      setSeenNotifIds(new Set(items.map((i) => i._id)));
+    if (hasNew) {
+      setSeenNotifIds((prev) => {
+        const next = new Set(prev);
+        items.forEach((i) => next.add(i._id));
+        return next;
+      });
     }
   }, [items, seenNotifIds]);
 
@@ -111,13 +120,9 @@ export function NotificationCenter() {
     if (typeof window !== "undefined" && "Notification" in window) {
       if (Notification.permission === "granted") {
         setHasBrowserPermission(true);
-        // Automatically sync device push registration with Convex when authenticated
-        if (isAuthLoaded && isSignedIn) {
-          requestAndRegisterPush(savePushMutation).catch(() => {});
-        }
       }
     }
-  }, [savePushMutation, isAuthLoaded, isSignedIn]);
+  }, []);
 
   const isSubscribed = pushStatus?.isSubscribed || hasBrowserPermission;
 
