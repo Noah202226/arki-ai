@@ -330,27 +330,27 @@ export function DebtPayoffPlanner() {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
           {sortedPlan.map((item) => (
             <div
               key={item._id}
               className={cn(
-                "p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 relative overflow-hidden",
+                "p-2.5 sm:p-3 rounded-xl border transition-all flex flex-col justify-between space-y-2 relative overflow-hidden",
                 item.step === 1
                   ? "bg-[#ff6b35]/10 border-[#ff6b35]/50 dark:bg-[#ff6b35]/15 shadow-sm"
-                  : "bg-slate-50/80 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800"
+                  : "bg-slate-50/80 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-[#ff6b35]/30"
               )}
             >
               {item.step === 1 && (
-                <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-[#ff6b35] text-white text-[9px] font-black uppercase tracking-wider shadow-sm">
-                  Priority Target #1
+                <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md bg-[#ff6b35] text-white text-[8px] font-black uppercase tracking-wider shadow-xs">
+                  Target #1
                 </span>
               )}
 
-              <div className="flex items-start gap-3">
+              <div className="flex items-center gap-2 pr-12">
                 <div
                   className={cn(
-                    "w-8 h-8 rounded-xl flex items-center justify-center font-mono font-black text-xs shrink-0",
+                    "w-6 h-6 rounded-lg flex items-center justify-center font-mono font-black text-[10px] shrink-0",
                     item.step === 1
                       ? "bg-[#ff6b35] text-white"
                       : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
@@ -360,29 +360,29 @@ export function DebtPayoffPlanner() {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <h5 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate leading-tight">
+                  <h5 className="text-xs font-extrabold text-slate-900 dark:text-slate-100 truncate leading-tight">
                     {item.creditorName}
                   </h5>
-                  <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                    {item.category || "General Credit"}
+                  <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block truncate">
+                    {item.category || "General"}
                   </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/40 dark:border-slate-700/40">
+              <div className="grid grid-cols-2 gap-1 pt-1.5 border-t border-slate-200/40 dark:border-slate-700/40">
                 <div>
-                  <span className="text-[8px] font-extrabold uppercase text-slate-400 block">
+                  <span className="text-[8px] font-extrabold uppercase text-slate-400 block leading-none mb-0.5">
                     Remaining
                   </span>
-                  <span className="text-xs font-mono font-black text-rose-500">
+                  <span className="text-[11px] font-mono font-black text-rose-500">
                     ₱{item.remainingBalance.toLocaleString()}
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[8px] font-extrabold uppercase text-slate-400 block">
-                    Est. Payoff Date
+                  <span className="text-[8px] font-extrabold uppercase text-slate-400 block leading-none mb-0.5">
+                    Est. Payoff
                   </span>
-                  <span className="text-xs font-mono font-extrabold text-emerald-500">
+                  <span className="text-[11px] font-mono font-extrabold text-emerald-500">
                     {format(item.targetPayoffDate, "MMM yyyy")}
                   </span>
                 </div>

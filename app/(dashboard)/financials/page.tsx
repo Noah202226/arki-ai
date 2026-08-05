@@ -138,31 +138,37 @@ export default function FinancialsPage() {
       <main className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-8">
         {/* TAB 1: OVERVIEW & ANALYTICS */}
         {activeTab === "overview" && (
-          <div className="space-y-8 animate-in fade-in-50 duration-200">
-            <section className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
-                <h2 className="flex items-center gap-2.5 text-base font-extrabold text-slate-900 dark:text-slate-100">
-                  <span className="w-1.5 h-4 rounded-full bg-[#ff6b35]" />
-                  Financial Analytics &amp; Cash Flow Charts
-                </h2>
-              </div>
-              <FinancialAnalytics />
-            </section>
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start animate-in fade-in-50 duration-200">
+            {/* LEFT COLUMN: Financial Analytics Charts & Budget Caps */}
+            <div className="xl:col-span-7 space-y-8">
+              <section className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+                  <h2 className="flex items-center gap-2.5 text-base font-extrabold text-slate-900 dark:text-slate-100">
+                    <span className="w-1.5 h-4 rounded-full bg-[#ff6b35]" />
+                    Financial Analytics &amp; Cash Flow Charts
+                  </h2>
+                </div>
+                <FinancialAnalytics />
+              </section>
 
-            <BudgetLimitsWidget />
+              <BudgetLimitsWidget />
+            </div>
 
-            <section className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-                <h2 className="flex items-center gap-2.5 text-base font-extrabold text-slate-900 dark:text-slate-100">
-                  <span className="w-1.5 h-4 rounded-full bg-[#ff6b35]" />
-                  Recent Transaction Activity
-                </h2>
-                <span className="text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 px-2.5 py-1 rounded-lg">
-                  TOP 50 RECENT
-                </span>
-              </div>
-              <TransactionHistory />
-            </section>
+            {/* RIGHT COLUMN: Recent Transaction Activity ALWAYS ON TOP RIGHT */}
+            <div className="xl:col-span-5 space-y-8">
+              <section className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+                  <h2 className="flex items-center gap-2.5 text-base font-extrabold text-slate-900 dark:text-slate-100">
+                    <span className="w-1.5 h-4 rounded-full bg-[#ff6b35]" />
+                    Recent Transaction Activity
+                  </h2>
+                  <span className="text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 px-2.5 py-1 rounded-lg">
+                    TOP 50 RECENT
+                  </span>
+                </div>
+                <TransactionHistory />
+              </section>
+            </div>
           </div>
         )}
 
@@ -228,26 +234,30 @@ export default function FinancialsPage() {
 
         {/* TAB 5: INCOME & SUBSCRIPTIONS */}
         {activeTab === "income-subs" && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in-50 duration-200">
-            <section className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
-                <h2 className="flex items-center gap-2.5 text-base font-extrabold text-slate-900 dark:text-slate-100">
-                  <span className="w-1.5 h-4 rounded-full bg-[#ff6b35]" />
-                  Expected Payroll &amp; Income
-                </h2>
-              </div>
-              <PayrollTracker />
-            </section>
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start animate-in fade-in-50 duration-200">
+            <div className="xl:col-span-6 space-y-8">
+              <section className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+                  <h2 className="flex items-center gap-2.5 text-base font-extrabold text-slate-900 dark:text-slate-100">
+                    <span className="w-1.5 h-4 rounded-full bg-[#ff6b35]" />
+                    Expected Payroll &amp; Income
+                  </h2>
+                </div>
+                <PayrollTracker />
+              </section>
+            </div>
 
-            <section className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
-                <h2 className="flex items-center gap-2.5 text-base font-extrabold text-slate-900 dark:text-slate-100">
-                  <span className="w-1.5 h-4 rounded-full bg-[#ff6b35]" />
-                  Subscription Monitoring
-                </h2>
-              </div>
-              <SubscriptionTracker />
-            </section>
+            <div className="xl:col-span-6 space-y-8">
+              <section className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+                  <h2 className="flex items-center gap-2.5 text-base font-extrabold text-slate-900 dark:text-slate-100">
+                    <span className="w-1.5 h-4 rounded-full bg-[#ff6b35]" />
+                    Subscription Monitoring
+                  </h2>
+                </div>
+                <SubscriptionTracker />
+              </section>
+            </div>
           </div>
         )}
 
@@ -268,9 +278,9 @@ export default function FinancialsPage() {
 
         {/* TAB 7: ALL-IN-ONE GRID (UNIFIED VIEW FOR POWER USERS) */}
         {activeTab === "all" && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in-50 duration-200">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start animate-in fade-in-50 duration-200">
             {/* LEFT COLUMN */}
-            <div className="space-y-8">
+            <div className="xl:col-span-6 space-y-8">
               <section className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
                 <h2 className="flex items-center gap-2.5 text-sm font-extrabold text-slate-900 dark:text-slate-100 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
                   <span className="w-1.5 h-4 rounded-full bg-[#ff6b35]" />
@@ -313,7 +323,7 @@ export default function FinancialsPage() {
             </div>
 
             {/* RIGHT COLUMN */}
-            <div className="space-y-8">
+            <div className="xl:col-span-6 space-y-8">
               <section className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
                 <h2 className="flex items-center gap-2.5 text-sm font-extrabold text-slate-900 dark:text-slate-100 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
                   <span className="w-1.5 h-4 rounded-full bg-[#ff6b35]" />
