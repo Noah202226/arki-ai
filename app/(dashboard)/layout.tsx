@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
@@ -18,16 +18,45 @@ export default function DashboardLayout({
   const router = useRouter();
   const { isLoaded, isSignedIn } = useUser();
 
+  const [isNavigating, setIsNavigating] = useState(false);
+
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
       router.push("/");
     }
   }, [isLoaded, isSignedIn, router]);
 
+  useEffect(() => {
+    setIsNavigating(false);
+  }, [pathname]);
+
   if (!isLoaded || !isSignedIn) {
     return (
-      <div className="min-h-screen bg-[#fcfaf7] dark:bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#ff6b35]" />
+      <div className="min-h-screen bg-[#fcfaf7] dark:bg-[#090d16] flex flex-col items-center justify-center p-6 text-slate-800 dark:text-slate-100 transition-colors duration-200">
+        <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in-95 duration-300">
+          {/* Animated App Icon with Glowing Ring */}
+          <div className="relative flex items-center justify-center">
+            <div className="absolute inset-0 rounded-3xl bg-[#ff6b35]/20 blur-xl animate-pulse" />
+            <img
+              src="/android-chrome-512x512.png"
+              alt="Arki Icon"
+              className="w-20 h-20 relative z-10 rounded-2xl shadow-2xl shadow-[#ff6b35]/30 animate-pulse duration-1000"
+            />
+            <div className="absolute -bottom-2 -right-2 z-20 bg-slate-900 dark:bg-slate-100 text-[#ff6b35] dark:text-[#ff6b35] p-1.5 rounded-full shadow-lg">
+              <Loader2 className="w-4 h-4 animate-spin text-[#ff6b35]" />
+            </div>
+          </div>
+
+          {/* Branded Title & Loading Message */}
+          <div className="text-center space-y-1">
+            <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight">
+              Arki<span className="text-[#ff6b35]">.</span>
+            </h2>
+            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 animate-pulse">
+              Initializing Assistant Hub...
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -39,7 +68,12 @@ export default function DashboardLayout({
   ];
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-[#fcfaf7] dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased font-sans transition-colors duration-200">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#fcfaf7] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 antialiased font-sans transition-colors duration-200 relative">
+      {/* Top Accent Loading Indicator */}
+      {isNavigating && (
+        <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-[#ff6b35] animate-pulse shadow-md shadow-[#ff6b35]/50" />
+      )}
+
       {/* MOBILE TOP BAR */}
       <div className="md:hidden sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-[#e5dec9]/40 dark:border-slate-800/80 px-4 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-2.5">
@@ -82,6 +116,9 @@ export default function DashboardLayout({
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={() => {
+                    if (!isActive) setIsNavigating(true);
+                  }}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-xl font-extrabold text-xs transition-all duration-200 border border-transparent",
                     isActive

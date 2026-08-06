@@ -80,8 +80,22 @@ export function TransactionHistory() {
 
   if (transactions === undefined || categories === undefined)
     return (
-      <div className="flex justify-center items-center p-20">
-        <Loader2 className="animate-spin text-[#ff6b35] w-10 h-10" />
+      <div className="space-y-3 p-2">
+        {[1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className="p-3.5 rounded-2xl bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-800 flex items-center justify-between animate-pulse"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-700" />
+              <div className="space-y-1.5">
+                <div className="h-3.5 w-32 bg-slate-200 dark:bg-slate-700 rounded" />
+                <div className="h-2.5 w-20 bg-slate-200/60 dark:bg-slate-700/60 rounded" />
+              </div>
+            </div>
+            <div className="h-4 w-16 bg-slate-200 dark:bg-slate-700 rounded" />
+          </div>
+        ))}
       </div>
     );
 

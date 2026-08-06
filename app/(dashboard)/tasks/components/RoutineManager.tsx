@@ -31,8 +31,44 @@ export function RoutineManager() {
 
   if (tasks === undefined) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-6 w-6 animate-spin text-[#1a1a2e]/20 dark:text-white/20" />
+      <div className="min-h-screen bg-[#fcfaf7] dark:bg-slate-950 text-slate-800 dark:text-slate-100 animate-in fade-in duration-200">
+        {/* Skeleton Header */}
+        <div className="bg-[#1a1a2e] px-4 sm:px-8 py-6 border-b border-white/[0.06] space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="h-3 w-36 bg-white/10 rounded-md animate-pulse" />
+              <div className="h-7 w-52 bg-white/20 rounded-lg animate-pulse" />
+            </div>
+            <div className="h-9 w-32 bg-white/10 rounded-xl animate-pulse" />
+          </div>
+        </div>
+
+        {/* Skeleton Stats Bar */}
+        <div className="bg-[#1a1a2e] grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-white/[0.06] border-t border-white/[0.06]">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="p-4 space-y-2">
+              <div className="h-3 w-20 bg-white/10 rounded animate-pulse" />
+              <div className="h-6 w-16 bg-white/20 rounded animate-pulse" />
+              <div className="h-2.5 w-24 bg-white/10 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+
+        {/* Skeleton Lists */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 sm:p-8">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 space-y-4">
+            <div className="h-5 w-40 bg-slate-200 dark:bg-slate-800 rounded-lg animate-pulse" />
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 w-full bg-slate-100 dark:bg-slate-800/50 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 space-y-4">
+            <div className="h-5 w-40 bg-slate-200 dark:bg-slate-800 rounded-lg animate-pulse" />
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 w-full bg-slate-100 dark:bg-slate-800/50 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

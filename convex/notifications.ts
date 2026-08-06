@@ -73,6 +73,22 @@ export const deleteNotification = mutation({
       throw new Error("Notification not found or unauthorized");
     }
 
+    // Save title to dismissedNotifications to prevent auto-resyncing
+    const alreadyDismissed = await ctx.db
+      .query("dismissedNotifications")
+      .withIndex("by_userId_and_title", (q) =>
+        q.eq("userId", identity.subject).eq("title", existing.title)
+      )
+      .first();
+
+    if (!alreadyDismissed) {
+      await ctx.db.insert("dismissedNotifications", {
+        userId: identity.subject,
+        title: existing.title,
+        dismissedAt: Date.now(),
+      });
+    }
+
     await ctx.db.delete(args.id);
   },
 });
@@ -89,7 +105,22 @@ export const clearAll = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
       .collect();
 
+    const now = Date.now();
     for (const notif of all) {
+      const alreadyDismissed = await ctx.db
+        .query("dismissedNotifications")
+        .withIndex("by_userId_and_title", (q) =>
+          q.eq("userId", identity.subject).eq("title", notif.title)
+        )
+        .first();
+
+      if (!alreadyDismissed) {
+        await ctx.db.insert("dismissedNotifications", {
+          userId: identity.subject,
+          title: notif.title,
+          dismissedAt: now,
+        });
+      }
       await ctx.db.delete(notif._id);
     }
   },
@@ -106,14 +137,23 @@ export const syncAutoReminders = mutation({
     const threeDaysFromNow = now + 3 * 24 * 60 * 60 * 1000;
     const last24Hours = now - 24 * 60 * 60 * 1000;
 
-    // Fetch existing recent notifications to prevent duplicate alerts within 24h
+    // Fetch existing recent notifications & dismissed notifications
     const recentNotifs = await ctx.db
       .query("notifications")
       .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
       .filter((q) => q.gte(q.field("createdAt"), last24Hours))
       .collect();
 
-    const recentTitles = new Set(recentNotifs.map((n) => n.title));
+    const dismissedNotifs = await ctx.db
+      .query("dismissedNotifications")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .filter((q) => q.gte(q.field("dismissedAt"), last24Hours))
+      .collect();
+
+    const recentTitles = new Set([
+      ...recentNotifs.map((n) => n.title),
+      ...dismissedNotifs.map((d) => d.title),
+    ]);
     let createdCount = 0;
 
     // 1. Check Subscriptions Due / Overdue

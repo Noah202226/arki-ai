@@ -34,6 +34,7 @@ export function NotificationCenter() {
   const { isSignedIn, isLoaded: isAuthLoaded } = useUser();
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "subscription" | "credit" | "task">("all");
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<Id<"notifications"> | null>(null);
 
   const data = useQuery(api.notifications.getNotifications);
   const syncReminders = useMutation(api.notifications.syncAutoReminders);
@@ -275,7 +276,7 @@ export function NotificationCenter() {
         </div>
 
         {/* List */}
-        <div className="max-h-[280px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 flex-1">
+        <div className="max-h-[300px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 flex-1">
           {filteredItems.length === 0 ? (
             <div className="py-10 text-center px-4">
               <Sparkles className="w-7 h-7 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
@@ -287,61 +288,98 @@ export function NotificationCenter() {
           ) : (
             filteredItems.map((item) => {
               const notifId = item._id as Id<"notifications">;
+              const isConfirming = confirmingDeleteId === notifId;
+
               return (
-                <div
-                  key={item._id}
-                  className={cn(
-                    "p-3 flex items-start gap-3 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/40 relative group",
-                    !item.isRead && "bg-orange-500/5 dark:bg-orange-500/10"
-                  )}
-                >
-                  {/* Unread indicator */}
-                  {!item.isRead && (
-                    <span className="absolute left-1.5 top-4 w-1.5 h-1.5 rounded-full bg-[#ff6b35]" />
-                  )}
-
-                  {/* Icon */}
-                  <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 shrink-0 mt-0.5">
-                    {getIcon(item.type, item.severity)}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0 space-y-0.5">
-                    <div className="flex items-center justify-between gap-1">
-                      <h5 className="text-xs font-extrabold text-slate-900 dark:text-slate-100 truncate">
-                        {item.title}
-                      </h5>
-                      <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 shrink-0">
-                        {formatDistanceToNow(item.createdAt, { addSuffix: true })}
-                      </span>
+                <div key={item._id} className="relative overflow-hidden bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800/60 last:border-0">
+                  {/* Notification Item Content with inline confirm or normal state */}
+                  {isConfirming ? (
+                    <div className="p-3 bg-rose-500/10 dark:bg-rose-500/15 border-l-4 border-rose-500 flex items-center justify-between gap-2 animate-in fade-in duration-150">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Delete notification?</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Won't alert you again today.</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => setConfirmingDeleteId(null)}
+                          className="px-2.5 py-1 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-all"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await deleteNotif({ id: notifId });
+                              toast.success("Notification deleted");
+                            } catch {
+                              toast.error("Failed to delete notification");
+                            } finally {
+                              setConfirmingDeleteId(null);
+                            }
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-extrabold bg-rose-600 text-white hover:bg-rose-700 rounded-lg shadow-sm transition-all"
+                        >
+                          Confirm
+                        </button>
+                      </div>
                     </div>
+                  ) : (
+                    <div
+                      className={cn(
+                        "p-3 flex items-start gap-3 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/40 relative bg-white dark:bg-slate-900 select-none",
+                        !item.isRead && "bg-orange-500/5 dark:bg-orange-500/10"
+                      )}
+                    >
+                      {/* Unread indicator */}
+                      {!item.isRead && (
+                        <span className="absolute left-1.5 top-4 w-1.5 h-1.5 rounded-full bg-[#ff6b35]" />
+                      )}
 
-                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
-                      {item.message}
-                    </p>
+                      {/* Icon */}
+                      <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 shrink-0 mt-0.5">
+                        {getIcon(item.type, item.severity)}
+                      </div>
 
-                    {item.linkUrl && (
-                      <Link
-                        href={item.linkUrl}
-                        onClick={() => {
-                          if (!item.isRead) markAsRead({ id: notifId });
-                          setOpen(false);
-                        }}
-                        className="inline-flex items-center gap-1 text-[10px] font-bold text-[#ff6b35] dark:text-[#ff8555] hover:underline pt-1"
+                      {/* Content */}
+                      <div className="flex-1 min-w-0 space-y-0.5">
+                        <div className="flex items-center justify-between gap-1">
+                          <h5 className="text-xs font-extrabold text-slate-900 dark:text-slate-100 truncate">
+                            {item.title}
+                          </h5>
+                          <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 shrink-0">
+                            {formatDistanceToNow(item.createdAt, { addSuffix: true })}
+                          </span>
+                        </div>
+
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
+                          {item.message}
+                        </p>
+
+                        {item.linkUrl && (
+                          <Link
+                            href={item.linkUrl}
+                            onClick={() => {
+                              if (!item.isRead) markAsRead({ id: notifId });
+                              setOpen(false);
+                            }}
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-[#ff6b35] dark:text-[#ff8555] hover:underline pt-1"
+                          >
+                            View Details <ExternalLink className="w-2.5 h-2.5" />
+                          </Link>
+                        )}
+                      </div>
+
+                      {/* Explicit, always-visible Trash button (Mobile & Desktop friendly) */}
+                      <button
+                        onClick={() => setConfirmingDeleteId(notifId)}
+                        className="text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-rose-400 transition-colors p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 shrink-0 self-center"
+                        title="Delete notification"
+                        aria-label="Delete notification"
                       >
-                        View Details <ExternalLink className="w-2.5 h-2.5" />
-                      </Link>
-                    )}
-                  </div>
-
-                  {/* Delete button */}
-                  <button
-                    onClick={() => deleteNotif({ id: notifId })}
-                    className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-500 dark:text-slate-600 dark:hover:text-rose-400 transition-all p-1"
-                    title="Delete"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })

@@ -117,8 +117,22 @@ export function AccountList() {
 
   if (accounts === undefined || creditSummary === undefined) {
     return (
-      <div className="flex justify-center p-12">
-        <Loader2 className="h-6 w-6 animate-spin text-[#1a1a2e]/20" />
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="p-5 rounded-2xl bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-800 space-y-4 animate-pulse"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-700" />
+                <div className="h-4 w-28 bg-slate-200 dark:bg-slate-700 rounded" />
+              </div>
+              <div className="h-4 w-12 bg-slate-200 dark:bg-slate-700 rounded" />
+            </div>
+            <div className="h-7 w-36 bg-slate-200 dark:bg-slate-700 rounded" />
+          </div>
+        ))}
       </div>
     );
   }

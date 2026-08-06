@@ -14,3 +14,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
   <DialogContent className="w-[94vw] sm:max-w-[92vw] lg:max-w-6xl xl:max-w-7xl max-h-[90vh]">
   ```
 - **Diagnostic Workflow**: Before diagnosing why a modal appears narrow on desktop screens, inspect `components/ui/dialog.tsx` to identify primitive default max-width classes.
+
+## 2. Mandatory Implementation Plan Rule
+- **Plan First**: Before making any code changes, bug fixes, or feature implementations, ALWAYS construct a precise, structured, and straight-to-the-point implementation plan artifact.
+- **Clarity Requirement**: Clearly outline **what** changes, **how** it is implemented, and the exact **effects/impact** on the app's UI, data layer, and user flow before writing code.

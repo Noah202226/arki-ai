@@ -222,6 +222,15 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_userId_and_read", ["userId", "isRead"]),
 
+  // Track user-deleted notification signatures to prevent auto-resyncing deleted notifications
+  dismissedNotifications: defineTable({
+    userId: v.string(),
+    title: v.string(),
+    dismissedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_title", ["userId", "title"]),
+
   // 8. PWA PUSH SUBSCRIPTIONS TABLE (For Android Status Bar & Lockscreen alerts)
   pushSubscriptions: defineTable({
     userId: v.string(),

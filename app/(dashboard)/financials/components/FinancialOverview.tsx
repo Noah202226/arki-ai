@@ -81,8 +81,17 @@ export function FinancialOverview() {
     credits === undefined
   ) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-[#ff6b35]" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-white/[0.08] border-b border-white/[0.08]">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="p-4 space-y-3 animate-pulse">
+            <div className="flex items-center justify-between">
+              <div className="h-3 w-20 bg-white/10 rounded" />
+              <div className="h-5 w-12 bg-white/10 rounded-full" />
+            </div>
+            <div className="h-7 w-28 bg-white/20 rounded" />
+            <div className="h-3 w-32 bg-white/10 rounded" />
+          </div>
+        ))}
       </div>
     );
   }
