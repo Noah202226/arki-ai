@@ -14,6 +14,10 @@ import { FinancialAnalytics } from "@/app/(dashboard)/financials/components/Fina
 import { BudgetLimitsWidget } from "@/app/(dashboard)/financials/components/BudgetLimitsWidget";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import {
+  ReceiptScanner,
+  ScanReceiptButton,
+} from "@/app/(dashboard)/financials/components/ReceiptScanner";
+import {
   Wallet,
   Calendar,
   ShieldAlert,
@@ -40,9 +44,12 @@ export default function FinancialsPage() {
   const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
-    setNow(new Date());
+    const initialTimer = setTimeout(() => setNow(new Date()), 0);
     const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(timer);
+    };
   }, []);
 
   const tabs = [
@@ -96,7 +103,9 @@ export default function FinancialsPage() {
               <NotificationCenter />
             </div>
 
+            <ScanReceiptButton />
             <AddTransactionDialog />
+            <ReceiptScanner />
           </div>
         </div>
 

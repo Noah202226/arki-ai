@@ -47,6 +47,7 @@ import { cn } from "@/lib/utils";
 // Zustand Store
 import { useTransactionStore } from "@/app/store/use-transaction-store";
 import Link from "next/link";
+import { ScanReceiptQuickBanner } from "@/app/(dashboard)/financials/components/ReceiptScanner";
 
 export function AddTransactionDialog() {
   const { isOpen, onClose, initialData, onOpen } = useTransactionStore();
@@ -171,7 +172,13 @@ export function AddTransactionDialog() {
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+        {!initialData.creditId && (
+          <div className="pt-2">
+            <ScanReceiptQuickBanner onScanClick={onClose} />
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4 pt-1">
           {!initialData.creditId && (
             <Tabs value={type} onValueChange={setType} className="w-full">
               <TabsList className="grid w-full grid-cols-2 bg-slate-100 dark:bg-slate-800/70 p-1.5 rounded-2xl border border-slate-200/50 dark:border-slate-700/50">

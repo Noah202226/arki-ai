@@ -61,6 +61,16 @@ export const addTransaction = mutation({
     accountId: v.id("accounts"),
     creditId: v.optional(v.id("credits")),
     date: v.number(), // Ito ay gagamitin natin bilang dueDate
+    receiptNotes: v.optional(v.string()),
+    receiptItems: v.optional(
+      v.array(
+        v.object({
+          name: v.string(),
+          price: v.number(),
+          quantity: v.optional(v.number()),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -90,6 +100,8 @@ export const addTransaction = mutation({
       dueDate: transactionDate, // Ginamit natin yung date mula sa form
       isDeleted: false, // Default value para sa soft delete
       deletedAt: undefined, // Default value para sa soft delete
+      receiptNotes: args.receiptNotes,
+      receiptItems: args.receiptItems,
     });
 
     // 2. Update Account Balance

@@ -16,6 +16,7 @@ import {
   Wallet,
   RefreshCw,
   PenLine,
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -244,10 +245,18 @@ export function TransactionHistory() {
                           {format(tx.dueDate, "hh:mm a")}
                         </span>
 
-                        {/* RECURRING AUTO VS MANUAL BADGE */}
+                        {/* RECURRING AUTO VS MANUAL VS RECEIPT BADGE */}
                         {isAutoRecurring ? (
                           <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border shrink-0 bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30 flex items-center gap-1">
                             <RefreshCw className="w-2.5 h-2.5 text-purple-500" /> Recurring Auto
+                          </span>
+                        ) : Boolean(
+                            "receiptItems" in tx &&
+                              Array.isArray((tx as { receiptItems?: unknown[] }).receiptItems) &&
+                              ((tx as { receiptItems?: unknown[] }).receiptItems?.length ?? 0) > 0
+                          ) ? (
+                          <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border shrink-0 bg-[#ff6b35]/10 text-[#ff6b35] dark:text-[#ff8555] border-[#ff6b35]/30 flex items-center gap-1">
+                            <Receipt className="w-2.5 h-2.5 text-[#ff6b35]" /> Receipt Verified
                           </span>
                         ) : (
                           <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-md border shrink-0 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200/60 dark:border-slate-700/60 flex items-center gap-1">
