@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createWorker } from "tesseract.js";
 import { parseReceiptText, ExtractedReceiptData } from "@/lib/receipt-parser";
+import os from "os";
 
 export const runtime = "nodejs";
 export const maxDuration = 45; // 45 seconds max for OCR
@@ -11,7 +12,12 @@ let tesseractWorkerPromise: Promise<any> | null = null;
 async function getTesseractWorker() {
   if (!tesseractWorkerPromise) {
     tesseractWorkerPromise = (async () => {
-      const worker = await createWorker("eng");
+      const cacheDir = os.tmpdir() || "/tmp";
+      const worker = await createWorker("eng", 1, {
+        cachePath: cacheDir,
+        cacheMethod: "write",
+        gzip: true,
+      });
       return worker;
     })().catch((err) => {
       console.error("Failed to initialize Tesseract worker:", err);
@@ -26,16 +32,25 @@ async function getTesseractWorker() {
  * Runs local Tesseract OCR on image buffer and parses structured receipt fields.
  */
 async function runTesseractOcr(imageBuffer: Buffer): Promise<ExtractedReceiptData> {
+  const ocrWithTimeout = async (worker: any) => {
+    return Promise.race([
+      worker.recognize(imageBuffer),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("OCR recognition timed out after 18 seconds")), 18000)
+      ),
+    ]);
+  };
+
   try {
     const worker = await getTesseractWorker();
-    const ret = await worker.recognize(imageBuffer);
+    const ret = await ocrWithTimeout(worker);
     const rawText = ret?.data?.text || "";
     return parseReceiptText(rawText);
   } catch (err) {
     console.warn("Tesseract worker error, retrying with fresh worker:", err);
     tesseractWorkerPromise = null;
     const worker = await getTesseractWorker();
-    const ret = await worker.recognize(imageBuffer);
+    const ret = await ocrWithTimeout(worker);
     const rawText = ret?.data?.text || "";
     return parseReceiptText(rawText);
   }
@@ -239,14 +254,30 @@ export async function POST(req: NextRequest) {
     // 1. Tesseract Direct Mode (or when no API key is provided)
     if (engine === "tesseract" || !apiKey) {
       console.log("Processing receipt with local Tesseract OCR engine...");
-      const ocrResult = await runTesseractOcr(imageBuffer);
-      return NextResponse.json({
-        ok: true,
-        data: {
-          ...ocrResult,
-          engine: "tesseract",
-        },
-      });
+      try {
+        const ocrResult = await runTesseractOcr(imageBuffer);
+        return NextResponse.json({
+          ok: true,
+          data: {
+            ...ocrResult,
+            engine: "tesseract",
+          },
+        });
+      } catch (ocrErr: any) {
+        console.warn("Tesseract direct execution failed:", ocrErr);
+        return NextResponse.json(
+          {
+            ok: false,
+            code: "OCR_UNAVAILABLE",
+            message:
+              ocrErr?.message?.includes("timed out")
+                ? "OCR processing timed out. Please try entering details manually or use a Gemini API key for instant recognition."
+                : "Could not read receipt from image. Please enter details manually or use a free Gemini API key.",
+            details: ocrErr?.message,
+          },
+          { status: 422 }
+        );
+      }
     }
 
     // 2. Gemini AI Vision Mode with automatic Tesseract Fallback
@@ -411,16 +442,30 @@ IMPORTANT: Respond ONLY with a valid JSON object adhering to this structure. Do 
       `Gemini vision failed (${isRateLimited ? "429 Rate Limit" : lastError?.message}), falling back to Tesseract OCR...`
     );
 
-    const fallbackResult = await runTesseractOcr(imageBuffer);
-    return NextResponse.json({
-      ok: true,
-      data: {
-        ...fallbackResult,
-        engine: "tesseract",
-      },
-      fallbackFrom: "gemini",
-      fallbackReason: isRateLimited ? "Gemini Rate Limit (429)" : "Gemini API unavailable",
-    });
+    try {
+      const fallbackResult = await runTesseractOcr(imageBuffer);
+      return NextResponse.json({
+        ok: true,
+        data: {
+          ...fallbackResult,
+          engine: "tesseract",
+        },
+        fallbackFrom: "gemini",
+        fallbackReason: isRateLimited ? "Gemini Rate Limit (429)" : "Gemini API unavailable",
+      });
+    } catch (ocrErr: any) {
+      console.warn("Both Gemini and Tesseract fallback failed:", ocrErr);
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "ALL_ENGINES_FAILED",
+          message:
+            "Could not read receipt from image. You can enter transaction details manually or try taking a clearer photo.",
+          details: ocrErr?.message,
+        },
+        { status: 422 }
+      );
+    }
   } catch (error: unknown) {
     console.error("Receipt Scan Critical Error:", error);
     const msg = error instanceof Error ? error.message : "Failed to scan and analyze receipt";

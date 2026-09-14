@@ -52,6 +52,7 @@ import {
   Maximize2,
   Minimize2,
   ShieldAlert,
+  AlertCircle,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -68,9 +69,13 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
     isKeyPromptOpen,
     isScanning,
     scanProgressText,
+    scanError,
     receiptImage,
     extractedData,
     userApiKey,
+    setScanError,
+    openManualEntry,
+    openKeyPrompt,
     closeConfirmModal,
     closeKeyPrompt,
     setUserApiKey,
@@ -273,32 +278,117 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
 
   return (
     <>
-      {/* 1. SCANNING IN-PROGRESS RADAR MODAL */}
-      <Dialog open={isScanning} onOpenChange={() => {}}>
-        <DialogContent className="w-[90vw] sm:max-w-md rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl p-8 text-center [&>button]:hidden">
-          <div className="flex flex-col items-center justify-center space-y-5">
-            {/* Animated Scanner Radar */}
-            <div className="relative w-20 h-20 flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#ff6b35] via-amber-500 to-orange-400 opacity-25 animate-ping" />
-              <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-[#ff6b35] to-amber-500 text-white flex items-center justify-center shadow-xl shadow-[#ff6b35]/30">
-                <ScanLine className="w-8 h-8 animate-pulse stroke-[2.5]" />
+      {/* 1. SCANNING IN-PROGRESS & ERROR RECOVERY MODAL */}
+      <Dialog
+        open={isScanning || Boolean(scanError)}
+        onOpenChange={(open) => {
+          if (!open && scanError) {
+            setScanError(null);
+          }
+        }}
+      >
+        <DialogContent className="w-[92vw] sm:max-w-md rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl p-6 sm:p-8 text-center [&>button]:hidden">
+          {scanError ? (
+            /* ERROR RECOVERY VIEW: Friendly, interactive troubleshooting card */
+            <div className="flex flex-col items-center justify-center space-y-4 text-center">
+              <div className="relative w-16 h-16 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center border border-rose-500/20 shadow-lg shadow-rose-500/10">
+                <AlertCircle className="w-8 h-8 stroke-[2.5]" />
+              </div>
+
+              <div className="space-y-1.5">
+                <DialogTitle className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-50">
+                  Could Not Auto-Extract Details
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
+                  {scanError}
+                </DialogDescription>
+              </div>
+
+              {receiptImage && (
+                <div className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                  <Camera className="w-3.5 h-3.5 text-[#ff6b35]" />
+                  <span>Your receipt photo is safely saved!</span>
+                </div>
+              )}
+
+              <div className="w-full pt-2 space-y-2.5">
+                {/* 1. Primary Action: Fill Details Manually (keeps the photo for inspection) */}
+                <Button
+                  type="button"
+                  onClick={() => openManualEntry(receiptImage)}
+                  className="w-full h-11 rounded-xl font-extrabold text-xs bg-gradient-to-r from-[#ff6b35] to-orange-500 hover:from-orange-600 hover:to-[#ff6b35] text-white shadow-md shadow-[#ff6b35]/25 flex items-center justify-center gap-2 transition-all active:scale-95"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Inspect Photo &amp; Enter Manually</span>
+                </Button>
+
+                {/* 2. Secondary: Configure Gemini Key for instant cloud AI */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setScanError(null);
+                    openKeyPrompt();
+                  }}
+                  className="w-full h-10 rounded-xl font-bold text-xs border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-[#ff6b35] flex items-center justify-center gap-2"
+                >
+                  <KeyRound className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Use Free Gemini AI Key (2s Scan)</span>
+                </Button>
+
+                {/* 3. Retake or Dismiss */}
+                <div className="flex items-center gap-2 pt-1">
+                  {onRetake && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setScanError(null);
+                        onRetake();
+                      }}
+                      className="flex-1 h-9 rounded-xl font-bold text-xs text-slate-600 dark:text-slate-400 hover:text-[#ff6b35]"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                      Retake Photo
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setScanError(null)}
+                    className="flex-1 h-9 rounded-xl font-bold text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                  >
+                    Dismiss
+                  </Button>
+                </div>
               </div>
             </div>
+          ) : (
+            /* ACTIVE SCANNING RADAR VIEW */
+            <div className="flex flex-col items-center justify-center space-y-5">
+              {/* Animated Scanner Radar */}
+              <div className="relative w-20 h-20 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#ff6b35] via-amber-500 to-orange-400 opacity-25 animate-ping" />
+                <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-[#ff6b35] to-amber-500 text-white flex items-center justify-center shadow-xl shadow-[#ff6b35]/30">
+                  <ScanLine className="w-8 h-8 animate-pulse stroke-[2.5]" />
+                </div>
+              </div>
 
-            <DialogHeader className="space-y-1.5 text-center">
-              <DialogTitle className="text-base font-extrabold text-slate-900 dark:text-slate-50 tracking-tight text-center">
-                AI Receipt Scanner
-              </DialogTitle>
-              <DialogDescription className="text-xs font-semibold text-slate-500 dark:text-slate-400 text-center">
-                {scanProgressText}
-              </DialogDescription>
-            </DialogHeader>
+              <DialogHeader className="space-y-1.5 text-center">
+                <DialogTitle className="text-base font-extrabold text-slate-900 dark:text-slate-50 tracking-tight text-center">
+                  AI Receipt Scanner
+                </DialogTitle>
+                <DialogDescription className="text-xs font-semibold text-slate-500 dark:text-slate-400 text-center">
+                  {scanProgressText}
+                </DialogDescription>
+              </DialogHeader>
 
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-[11px] font-bold text-slate-600 dark:text-slate-300">
-              <Sparkles className="w-3.5 h-3.5 text-[#ff6b35] animate-spin" />
-              Extracting totals, merchant, &amp; line items
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                <Sparkles className="w-3.5 h-3.5 text-[#ff6b35] animate-spin" />
+                Extracting totals, merchant, &amp; line items
+              </div>
             </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -368,7 +458,7 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
       <Dialog open={isConfirmOpen} onOpenChange={(open) => !open && closeConfirmModal()}>
         <DialogContent className="w-[94vw] sm:max-w-[92vw] lg:max-w-5xl xl:max-w-6xl max-h-[90vh] overflow-y-auto p-0 rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl">
           {/* MODAL HEADER */}
-          <div className="sticky top-0 z-20 px-6 py-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4">
+          <div className="sticky top-0 z-20 px-4 sm:px-6 py-3.5 sm:py-4 pr-12 sm:pr-14 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-2xl bg-[#ff6b35]/10 text-[#ff6b35]">
                 <Receipt className="w-5 h-5 stroke-[2.5]" />

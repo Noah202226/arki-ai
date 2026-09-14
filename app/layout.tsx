@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ConvexClientProvider } from "./ConvexClientProvider";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 
 const APP_NAME = "PWA App";
 const APP_DEFAULT_TITLE = "Arki - Your personal assistant for life";
@@ -78,6 +79,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <ConvexClientProvider>{children}</ConvexClientProvider>
+          <Toaster richColors closeButton position="top-center" />
         </ThemeProvider>
       </body>
     </html>

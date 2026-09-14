@@ -19,11 +19,14 @@ interface ReceiptStore {
   isKeyPromptOpen: boolean;
   isCameraOpen: boolean;
   scanProgressText: string;
+  scanError: string | null;
   receiptImage: string | null;
   extractedData: ExtractedReceiptData | null;
   userApiKey: string;
 
   setScanning: (isScanning: boolean, progressText?: string) => void;
+  setScanError: (error: string | null) => void;
+  openManualEntry: (capturedImage?: string | null) => void;
   openConfirmModal: (data: ExtractedReceiptData, image: string | null) => void;
   closeConfirmModal: () => void;
   openCamera: () => void;
@@ -42,12 +45,35 @@ export const useReceiptStore = create<ReceiptStore>((set) => ({
   isKeyPromptOpen: false,
   isCameraOpen: false,
   scanProgressText: "Analyzing receipt with AI...",
+  scanError: null,
   receiptImage: null,
   extractedData: null,
   userApiKey: typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) || "" : "",
 
   setScanning: (isScanning, progressText = "Analyzing receipt with AI...") =>
-    set({ isScanning, scanProgressText: progressText }),
+    set({ isScanning, scanProgressText: progressText, ...(isScanning ? { scanError: null } : {}) }),
+
+  setScanError: (error) => set({ scanError: error, isScanning: false }),
+
+  openManualEntry: (capturedImage = null) =>
+    set((state) => ({
+      isConfirmOpen: true,
+      isScanning: false,
+      isCameraOpen: false,
+      scanError: null,
+      receiptImage: capturedImage || state.receiptImage,
+      extractedData: {
+        merchant: "",
+        amount: 0,
+        date: new Date().toISOString().split("T")[0],
+        categoryHint: "General",
+        type: "expense",
+        items: [],
+        notes: "Manually entered after capture",
+        confidence: "medium",
+        engine: "demo",
+      },
+    })),
 
   openConfirmModal: (data, image) =>
     set({
@@ -56,6 +82,7 @@ export const useReceiptStore = create<ReceiptStore>((set) => ({
       receiptImage: image,
       isScanning: false,
       isCameraOpen: false,
+      scanError: null,
     }),
 
   closeConfirmModal: () =>
@@ -84,6 +111,7 @@ export const useReceiptStore = create<ReceiptStore>((set) => ({
       isScanning: false,
       isConfirmOpen: false,
       isKeyPromptOpen: false,
+      scanError: null,
       receiptImage: null,
       extractedData: null,
     }),

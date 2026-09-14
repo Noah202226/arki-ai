@@ -6,12 +6,13 @@ import { useReceiptStore, ExtractedReceiptData } from "@/app/store/use-receipt-s
 
 /**
  * Downscales and compresses image before upload to avoid multi-megabyte payloads.
- * Targets max 1600px dimension and 0.85 JPEG quality (~200KB-300KB).
+ * Targets max 1280px dimension and 0.80 JPEG quality (~150KB-250KB).
+ * Wrapped with a 10s timeout to avoid hanging indefinitely on mobile image decoding.
  */
 function compressImage(
   dataUrl: string,
-  maxDimension = 1600,
-  quality = 0.85
+  maxDimension = 1280,
+  quality = 0.8
 ): Promise<{ dataUrl: string; mimeType: string }> {
   return new Promise((resolve) => {
     if (typeof window === "undefined" || !dataUrl.startsWith("data:image")) {
@@ -19,8 +20,13 @@ function compressImage(
       return;
     }
 
+    const timer = setTimeout(() => {
+      resolve({ dataUrl, mimeType: "image/jpeg" });
+    }, 10000);
+
     const img = new Image();
     img.onload = () => {
+      clearTimeout(timer);
       let width = img.width;
       let height = img.height;
 
@@ -44,11 +50,16 @@ function compressImage(
       }
 
       ctx.drawImage(img, 0, 0, width, height);
-      const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
-      resolve({ dataUrl: compressedDataUrl, mimeType: "image/jpeg" });
+      try {
+        const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve({ dataUrl: compressedDataUrl, mimeType: "image/jpeg" });
+      } catch {
+        resolve({ dataUrl, mimeType: "image/jpeg" });
+      }
     };
 
     img.onerror = () => {
+      clearTimeout(timer);
       resolve({ dataUrl, mimeType: "image/jpeg" });
     };
 
@@ -61,6 +72,7 @@ export function useReceiptScan() {
   const {
     isScanning,
     scanProgressText,
+    scanError,
     isConfirmOpen,
     isKeyPromptOpen,
     isCameraOpen,
@@ -68,6 +80,8 @@ export function useReceiptScan() {
     extractedData,
     userApiKey,
     setScanning,
+    setScanError,
+    openManualEntry,
     openConfirmModal,
     closeConfirmModal,
     openCamera,
@@ -82,10 +96,18 @@ export function useReceiptScan() {
     async (base64DataUrl: string, mimeType = "image/jpeg") => {
       setScanning(true, "Optimizing & reading receipt with OCR...");
 
+      // Save preview immediately so if recognition fails, user can still inspect and manually enter
+      useReceiptStore.setState({ receiptImage: base64DataUrl });
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
+
       try {
         const { dataUrl: optimizedBase64, mimeType: optimizedMime } = await compressImage(
           base64DataUrl
         );
+
+        useReceiptStore.setState({ receiptImage: optimizedBase64 });
 
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
@@ -103,11 +125,14 @@ export function useReceiptScan() {
         const res = await fetch("/api/receipt/scan", {
           method: "POST",
           headers,
+          signal: controller.signal,
           body: JSON.stringify({
             imageBase64: optimizedBase64,
             mimeType: optimizedMime,
           }),
         });
+
+        clearTimeout(timeoutId);
 
         let json: any = null;
         try {
@@ -115,41 +140,55 @@ export function useReceiptScan() {
         } catch {
           const rawText = await res.text().catch(() => "");
           throw new Error(
-            `Server returned status ${res.status}: ${rawText.slice(0, 100) || "Invalid response"}`
+            res.status === 413
+              ? "Image file was too large for server. Please try a smaller photo."
+              : `Server returned error (${res.status}): ${rawText.slice(0, 100) || "Invalid response"}`
           );
         }
 
         if (!res.ok || !json?.ok) {
-          throw new Error(json?.message || "Failed to parse receipt.");
+          throw new Error(json?.message || "Failed to parse receipt from image.");
         }
 
         if (json.fallbackFrom) {
-          toast.info("Switched to Tesseract OCR (Gemini rate limit reached).", { duration: 4000 });
+          toast.info("Switched to OCR scanner (Gemini rate limit or quota reached).", { duration: 4000 });
         } else if (json.data?.engine === "tesseract") {
-          toast.success("Receipt scanned via Tesseract OCR! Please verify details.");
+          toast.success("Receipt scanned via OCR! Please review the details.");
         } else {
-          toast.success("Receipt scanned successfully! Please verify details.");
+          toast.success("Receipt scanned with AI! Please review the details.");
         }
 
         openConfirmModal(json.data as ExtractedReceiptData, optimizedBase64);
       } catch (err: unknown) {
+        clearTimeout(timeoutId);
         console.warn("Scan error:", err);
-        setScanning(false);
-        const msg =
-          err instanceof Error
-            ? err.message
-            : "Failed to scan receipt. Please try again.";
-        toast.error(msg, { duration: 5000 });
+
+        let msg = "Failed to scan receipt. Please try again.";
+        if (err instanceof Error) {
+          if (err.name === "AbortError") {
+            msg = "OCR processing timed out. Server or network is busy. You can enter details manually.";
+          } else {
+            msg = err.message;
+          }
+        }
+
+        setScanError(msg);
+        toast.error(msg, { duration: 6000 });
       }
     },
-    [userApiKey, setScanning, openConfirmModal]
+    [userApiKey, setScanning, setScanError, openConfirmModal]
   );
 
   const scanReceiptFile = useCallback(
     async (file: File) => {
       if (!file) return;
 
-      if (!file.type.startsWith("image/")) {
+      // Mobile Android fallback: file.type can be empty string or application/octet-stream
+      const isImageMime = file.type && file.type.startsWith("image/");
+      const isImageExt = /\.(jpe?g|png|webp|heic|heif|bmp|jfif|tiff?)$/i.test(file.name || "");
+      const isLikelyImage = isImageMime || isImageExt || !file.type;
+
+      if (!isLikelyImage) {
         toast.error("Please provide an image file (PNG, JPG, HEIC, WebP).");
         return;
       }
@@ -168,11 +207,12 @@ export function useReceiptScan() {
         await scanReceiptBase64(base64DataUrl, file.type || "image/jpeg");
       } catch (err: unknown) {
         console.error("File read error:", err);
-        setScanning(false);
-        toast.error("Failed to read image file.");
+        const msg = "Failed to read image file from device storage.";
+        setScanError(msg);
+        toast.error(msg);
       }
     },
-    [setScanning, scanReceiptBase64]
+    [setScanning, setScanError, scanReceiptBase64]
   );
 
   const scanDemoReceipt = useCallback(async () => {
@@ -196,10 +236,11 @@ export function useReceiptScan() {
         toast.success("Loaded sample receipt! Verify and tweak below.");
       }
     } catch {
-      setScanning(false);
-      toast.error("Failed to load demo receipt.");
+      const msg = "Failed to load demo receipt.";
+      setScanError(msg);
+      toast.error(msg);
     }
-  }, [setScanning, openConfirmModal]);
+  }, [setScanning, setScanError, openConfirmModal]);
 
   const triggerCamera = useCallback(() => {
     openCamera();
@@ -226,6 +267,7 @@ export function useReceiptScan() {
     fileInputRef,
     isScanning,
     scanProgressText,
+    scanError,
     isConfirmOpen,
     isKeyPromptOpen,
     isCameraOpen,
@@ -238,6 +280,7 @@ export function useReceiptScan() {
     scanReceiptFile,
     scanReceiptBase64,
     scanDemoReceipt,
+    openManualEntry,
     closeConfirmModal,
     openCamera,
     closeCamera,
