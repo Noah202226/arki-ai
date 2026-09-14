@@ -51,6 +51,9 @@ import {
   Minimize2,
   ShieldAlert,
   AlertCircle,
+  Plus,
+  Trash2,
+  Check,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -66,6 +69,8 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
     isConfirmOpen,
     isScanning,
     scanProgressText,
+    scanProgressPercent,
+    scanStage,
     scanError,
     receiptImage,
     extractedData,
@@ -79,6 +84,13 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
   const categories = useQuery(api.categories.getCategories, { type: undefined });
 
   // Form states
+  interface EditableReceiptItem {
+    id: string;
+    name: string;
+    price: string | number;
+    quantity: number;
+  }
+
   const [merchant, setMerchant] = useState("");
   const [amount, setAmount] = useState("");
   const [type, setType] = useState<"expense" | "income">("expense");
@@ -86,6 +98,7 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
   const [accountId, setAccountId] = useState("");
   const [date, setDate] = useState<Date>(new Date());
   const [notes, setNotes] = useState("");
+  const [items, setItems] = useState<EditableReceiptItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImageZoomed, setIsImageZoomed] = useState(false);
 
@@ -96,6 +109,20 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
       setAmount(extractedData.amount ? String(extractedData.amount) : "");
       setType(extractedData.type || "expense");
       setNotes(extractedData.notes || "");
+
+      // Populate items from extracted receipt or empty array
+      if (Array.isArray(extractedData.items) && extractedData.items.length > 0) {
+        setItems(
+          extractedData.items.map((it, idx) => ({
+            id: `item-${idx}-${Date.now()}`,
+            name: it.name || "",
+            price: it.price !== undefined ? String(it.price) : "0",
+            quantity: it.quantity && it.quantity > 0 ? it.quantity : 1,
+          }))
+        );
+      } else {
+        setItems([]);
+      }
 
       // Parse date safely
       if (extractedData.date) {
@@ -119,6 +146,48 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
       }
     }
   }, [extractedData, isConfirmOpen]);
+
+  // Item manipulation handlers
+  const handleAddItem = () => {
+    setItems((prev) => [
+      ...prev,
+      {
+        id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name: "",
+        price: "",
+        quantity: 1,
+      },
+    ]);
+  };
+
+  const handleUpdateItem = (
+    id: string,
+    field: "name" | "price" | "quantity",
+    value: string | number
+  ) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const handleRemoveItem = (id: string) => {
+    setItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  // Real-time sum of itemized lines
+  const itemsSum = useMemo(() => {
+    return items.reduce((sum, it) => {
+      const p = parseFloat(String(it.price)) || 0;
+      return sum + p;
+    }, 0);
+  }, [items]);
+
+  const handleSyncTotal = () => {
+    if (itemsSum > 0) {
+      setAmount(itemsSum.toFixed(2));
+      toast.success(`Updated total amount to ₱${itemsSum.toFixed(2)} from line items!`);
+    }
+  };
 
   // Auto-select category reactively when categories or type change
   useEffect(() => {
@@ -228,6 +297,14 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
         txDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
       }
 
+      const cleanedItems = items
+        .filter((it) => it.name.trim().length > 0 || (parseFloat(String(it.price)) || 0) > 0)
+        .map((it) => ({
+          name: it.name.trim() || "Item",
+          price: Math.max(0, parseFloat(String(it.price)) || 0),
+          quantity: it.quantity && it.quantity > 0 ? Number(it.quantity) : 1,
+        }));
+
       await addTransaction({
         title: cleanMerchant,
         amount: numAmount,
@@ -236,8 +313,7 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
         accountId: finalAccId as Id<"accounts">,
         date: txDate.getTime(),
         receiptNotes: notes.trim() || undefined,
-        receiptItems:
-          extractedData?.items && extractedData.items.length > 0 ? extractedData.items : undefined,
+        receiptItems: cleanedItems.length > 0 ? cleanedItems : undefined,
       });
 
       const accName = accounts?.find((a) => a._id === finalAccId)?.accountName || "Wallet";
@@ -328,28 +404,140 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
               </div>
             </div>
           ) : (
-            /* ACTIVE SCANNING RADAR VIEW */
-            <div className="flex flex-col items-center justify-center space-y-5">
-              {/* Animated Scanner Radar */}
-              <div className="relative w-20 h-20 flex items-center justify-center">
-                <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#ff6b35] via-amber-500 to-orange-400 opacity-25 animate-ping" />
-                <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-[#ff6b35] to-amber-500 text-white flex items-center justify-center shadow-xl shadow-[#ff6b35]/30">
-                  <ScanLine className="w-8 h-8 animate-pulse stroke-[2.5]" />
+            /* ACTIVE SCANNING MULTI-STAGE PROGRESS VIEW */
+            <div className="flex flex-col items-center justify-center space-y-4">
+              {/* Optional Mini Receipt Thumbnail with Animated Laser Scan Line */}
+              {receiptImage ? (
+                <div className="relative w-36 h-28 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700/80 bg-slate-100 dark:bg-slate-800/80 shadow-inner flex items-center justify-center">
+                  <img
+                    src={receiptImage}
+                    alt="Receipt preview"
+                    className="w-full h-full object-contain p-1 opacity-90"
+                  />
+                  {/* Glowing Laser Scan Bar */}
+                  <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#ff6b35] to-transparent shadow-[0_0_12px_#ff6b35] animate-[bounce_2s_infinite]" />
+                  <div className="absolute bottom-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-xs text-[9px] font-black uppercase tracking-wider text-white">
+                    Gemini AI
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* Animated Scanner Radar */
+                <div className="relative w-16 h-16 flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#ff6b35] via-amber-500 to-orange-400 opacity-25 animate-ping" />
+                  <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-[#ff6b35] to-amber-500 text-white flex items-center justify-center shadow-xl shadow-[#ff6b35]/30">
+                    <ScanLine className="w-7 h-7 animate-pulse stroke-[2.5]" />
+                  </div>
+                </div>
+              )}
 
-              <DialogHeader className="space-y-1.5 text-center">
-                <DialogTitle className="text-base font-extrabold text-slate-900 dark:text-slate-50 tracking-tight text-center">
-                  Tesseract Receipt OCR
+              <DialogHeader className="space-y-1 text-center w-full">
+                <DialogTitle className="text-base font-black text-slate-900 dark:text-slate-50 tracking-tight text-center">
+                  Processing Receipt OCR
                 </DialogTitle>
-                <DialogDescription className="text-xs font-semibold text-slate-500 dark:text-slate-400 text-center">
-                  {scanProgressText}
+                <DialogDescription className="text-xs font-semibold text-slate-500 dark:text-slate-400 text-center truncate px-2">
+                  {scanProgressText || "Analyzing image..."}
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                <Sparkles className="w-3.5 h-3.5 text-[#ff6b35] animate-spin" />
-                Extracting totals, merchant, &amp; line items
+              {/* Progress Bar with Percentage Label */}
+              <div className="w-full space-y-1.5 px-1">
+                <div className="flex items-center justify-between text-[11px] font-bold">
+                  <span className="text-slate-500 dark:text-slate-400">Pipeline Progress</span>
+                  <span className="text-[#ff6b35] font-extrabold">{Math.min(100, Math.max(5, scanProgressPercent))}%</span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden p-0.5 border border-slate-200/50 dark:border-slate-700/50">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-amber-500 via-[#ff6b35] to-orange-500 transition-all duration-300 ease-out shadow-sm shadow-[#ff6b35]/40"
+                    style={{ width: `${Math.min(100, Math.max(5, scanProgressPercent))}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Visual 4-Stage Pipeline Stepper */}
+              <div className="w-full rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-2.5 space-y-1.5 text-left">
+                {[
+                  { id: "preprocessing", label: "Clean Image", desc: "Grayscale, contrast & sharpen" },
+                  { id: "initializing", label: "Init Engine", desc: "Local worker & core files" },
+                  { id: "recognizing", label: "Reading Text", desc: "Gemini AI Extraction" },
+                  { id: "parsing", label: "Extract Data", desc: "Totals, merchant & item list" },
+                ].map((step, idx) => {
+                  const stageIdx =
+                    scanStage === "preprocessing"
+                      ? 0
+                      : scanStage === "initializing"
+                      ? 1
+                      : scanStage === "recognizing"
+                      ? 2
+                      : scanStage === "parsing"
+                      ? 3
+                      : 0;
+
+                  const isCompleted = scanProgressPercent >= 100 || stageIdx > idx;
+                  const isActive = !isCompleted && stageIdx === idx;
+
+                  return (
+                    <div
+                      key={step.id}
+                      className={cn(
+                        "flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-all",
+                        isActive
+                          ? "bg-white dark:bg-slate-800 border border-[#ff6b35]/30 shadow-xs"
+                          : isCompleted
+                          ? "opacity-90"
+                          : "opacity-40"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={cn(
+                            "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 transition-colors",
+                            isCompleted
+                              ? "bg-emerald-500 text-white"
+                              : isActive
+                              ? "bg-[#ff6b35] text-white animate-pulse"
+                              : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
+                          )}
+                        >
+                          {isCompleted ? (
+                            <Check className="w-3 h-3 stroke-[3]" />
+                          ) : isActive ? (
+                            <Loader2 className="w-3 h-3 animate-spin stroke-[2.5]" />
+                          ) : (
+                            idx + 1
+                          )}
+                        </div>
+                        <div>
+                          <div
+                            className={cn(
+                              "font-bold text-[11px]",
+                              isActive
+                                ? "text-[#ff6b35] dark:text-[#ff7b4b]"
+                                : isCompleted
+                                ? "text-slate-800 dark:text-slate-200"
+                                : "text-slate-500 dark:text-slate-400"
+                            )}
+                          >
+                            {step.label}
+                          </div>
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500 -mt-0.5">
+                            {step.desc}
+                          </div>
+                        </div>
+                      </div>
+
+                      {isActive && (
+                        <span className="text-[10px] font-bold text-[#ff6b35] px-1.5 py-0.5 rounded-md bg-[#ff6b35]/10 animate-pulse">
+                          Running
+                        </span>
+                      )}
+                      {isCompleted && (
+                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                          Done
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -488,43 +676,13 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
                   </div>
                 )}
 
-                {/* Itemized Line Items Breakdown */}
-                {extractedData?.items && extractedData.items.length > 0 && (
-                  <div className="space-y-2 pt-1">
-                    <div className="flex items-center justify-between px-0.5">
-                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                        <ShoppingBag className="w-3.5 h-3.5 text-[#ff6b35]" />
-                        Detected Items ({extractedData.items.length})
-                      </span>
-                      {extractedData.tax !== undefined && (
-                        <span className="text-[10px] font-mono text-slate-400">
-                          VAT/Tax: ₱{extractedData.tax.toFixed(2)}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1 text-xs">
-                      {extractedData.items.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800"
-                        >
-                          <div className="flex items-center gap-2 min-w-0 pr-2">
-                            {item.quantity && item.quantity > 1 && (
-                              <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono text-[10px] font-bold text-slate-600 dark:text-slate-300 shrink-0">
-                                {item.quantity}x
-                              </span>
-                            )}
-                            <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
-                              {item.name}
-                            </span>
-                          </div>
-                          <span className="font-mono font-bold text-slate-900 dark:text-slate-100 shrink-0">
-                            ₱{Number(item.price).toFixed(2)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                {/* Detected VAT / Tax Summary */}
+                {extractedData?.tax !== undefined && (
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/50 dark:border-slate-800 text-xs">
+                    <span className="font-semibold text-slate-500">VAT / Tax</span>
+                    <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                      ₱{extractedData.tax.toFixed(2)}
+                    </span>
                   </div>
                 )}
 
@@ -607,8 +765,8 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
                   />
                 </div>
 
-                {/* Amount and Category Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Amount, Category and Date Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                   {/* Amount Input */}
                   <div className="space-y-1.5">
                     <Label className="text-[10px] uppercase font-bold text-slate-400 px-1">
@@ -653,69 +811,6 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-
-                {/* Source Wallet and Date Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {/* Wallet Selector */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between px-1">
-                      <Label className="text-[10px] uppercase font-bold text-slate-400">
-                        Source Wallet
-                      </Label>
-                      {selectedAccount && (
-                        <span
-                          className={cn(
-                            "text-[10px] font-mono font-bold",
-                            isInsufficient
-                              ? "text-rose-500"
-                              : "text-emerald-600 dark:text-emerald-400"
-                          )}
-                        >
-                          Bal: ₱
-                          {selectedAccount.balance.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                          })}
-                        </span>
-                      )}
-                    </div>
-                    <Select value={accountId} onValueChange={setAccountId}>
-                      <SelectTrigger className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 h-11 rounded-xl focus:ring-2 focus:ring-[#ff6b35]">
-                        <SelectValue placeholder="Select Wallet" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xl max-h-56">
-                        {accounts?.map((acc) => {
-                          const isLow =
-                            type === "expense" && numAmount > 0 && acc.balance < numAmount;
-                          return (
-                            <SelectItem key={acc._id} value={acc._id}>
-                              <div className="flex items-center justify-between gap-3 w-full">
-                                <div className="flex items-center gap-2 truncate">
-                                  <Wallet className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                  <span className="font-semibold text-xs truncate">
-                                    {acc.accountName}
-                                  </span>
-                                </div>
-                                <span
-                                  className={cn(
-                                    "font-mono text-xs font-bold shrink-0 ml-auto",
-                                    isLow
-                                      ? "text-rose-500"
-                                      : "text-emerald-600 dark:text-emerald-400"
-                                  )}
-                                >
-                                  ₱
-                                  {acc.balance.toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                  })}
-                                </span>
-                              </div>
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
 
                   {/* Date Picker */}
                   <div className="space-y-1.5">
@@ -747,6 +842,66 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
                   </div>
                 </div>
 
+                {/* Source Wallet */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between px-1">
+                    <Label className="text-[10px] uppercase font-bold text-slate-400">
+                      Source Wallet
+                    </Label>
+                    {selectedAccount && (
+                      <span
+                        className={cn(
+                          "text-[10px] font-mono font-bold",
+                          isInsufficient
+                            ? "text-rose-500"
+                            : "text-emerald-600 dark:text-emerald-400"
+                        )}
+                      >
+                        Bal: ₱
+                        {selectedAccount.balance.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                        })}
+                      </span>
+                    )}
+                  </div>
+                  <Select value={accountId} onValueChange={setAccountId}>
+                    <SelectTrigger className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 h-11 rounded-xl focus:ring-2 focus:ring-[#ff6b35]">
+                      <SelectValue placeholder="Select Wallet" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xl max-h-56">
+                      {accounts?.map((acc) => {
+                        const isLow =
+                          type === "expense" && numAmount > 0 && acc.balance < numAmount;
+                        return (
+                          <SelectItem key={acc._id} value={acc._id}>
+                            <div className="flex items-center justify-between gap-3 w-full">
+                              <div className="flex items-center gap-2 truncate">
+                                <Wallet className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                <span className="font-semibold text-xs truncate">
+                                  {acc.accountName}
+                                </span>
+                              </div>
+                              <span
+                                className={cn(
+                                  "font-mono text-xs font-bold shrink-0 ml-auto",
+                                  isLow
+                                    ? "text-rose-500"
+                                    : "text-emerald-600 dark:text-emerald-400"
+                                )}
+                              >
+                                ₱
+                                {acc.balance.toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                })}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {isInsufficient && (
                   <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center gap-2 text-xs font-semibold">
                     <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -755,6 +910,148 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
                     </span>
                   </div>
                 )}
+
+                {/* ── ITEMIZE ITEMS SECTION (ALWAYS VISIBLE & EDITABLE) ── */}
+                <div className="space-y-2.5 rounded-2xl p-3.5 bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ShoppingBag className="w-4 h-4 text-[#ff6b35]" />
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-slate-100">
+                        Itemized Items
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-700/70 text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                        {items.length}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {items.length > 0 && Math.abs(itemsSum - numAmount) > 0.01 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleSyncTotal}
+                          className="h-7 px-2.5 rounded-lg text-[11px] font-bold text-[#ff6b35] hover:bg-[#ff6b35]/10 flex items-center gap-1"
+                          title="Set total amount to sum of items"
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          <span>Sync Total (₱{itemsSum.toFixed(2)})</span>
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddItem}
+                        className="h-7 px-2.5 rounded-lg text-[11px] font-bold border-slate-200 dark:border-slate-700 hover:text-[#ff6b35] hover:border-[#ff6b35]/40 flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Add Item</span>
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Items List */}
+                  {items.length === 0 ? (
+                    <div className="py-4 px-3 border border-dashed border-slate-200 dark:border-slate-700/80 rounded-xl text-center">
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                        No line items added yet.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleAddItem}
+                        className="mt-1.5 h-7 px-3 text-xs font-bold text-[#ff6b35] hover:bg-[#ff6b35]/10"
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Itemize this Receipt
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                      {items.map((it, idx) => (
+                        <div
+                          key={it.id}
+                          className="flex items-center gap-2 p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-sm"
+                        >
+                          {/* Quantity */}
+                          <div className="w-14 shrink-0">
+                            <Input
+                              type="number"
+                              min="1"
+                              value={it.quantity}
+                              onChange={(e) =>
+                                handleUpdateItem(it.id, "quantity", Math.max(1, parseInt(e.target.value, 10) || 1))
+                              }
+                              placeholder="1x"
+                              className="h-8 px-1.5 text-center font-mono text-xs font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                              title="Quantity"
+                            />
+                          </div>
+
+                          {/* Item Name */}
+                          <div className="flex-1 min-w-0">
+                            <Input
+                              type="text"
+                              value={it.name}
+                              onChange={(e) => handleUpdateItem(it.id, "name", e.target.value)}
+                              placeholder={`Item #${idx + 1} description`}
+                              className="h-8 px-2.5 text-xs font-semibold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                            />
+                          </div>
+
+                          {/* Price */}
+                          <div className="w-24 shrink-0 relative">
+                            <span className="absolute left-2 top-2 text-xs font-bold text-slate-400">₱</span>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={it.price}
+                              onChange={(e) => handleUpdateItem(it.id, "price", e.target.value)}
+                              placeholder="0.00"
+                              className="h-8 pl-5 pr-1.5 text-right font-mono text-xs font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                              title="Total item price"
+                            />
+                          </div>
+
+                          {/* Delete Item */}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveItem(it.id)}
+                            className="w-7 h-7 shrink-0 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg"
+                            title="Remove item"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+
+                      {/* Items Total Summary Bar */}
+                      <div className="flex items-center justify-between px-2 pt-1 text-xs">
+                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                          Items Subtotal:
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-slate-900 dark:text-slate-100">
+                            ₱{itemsSum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                          {numAmount > 0 && Math.abs(itemsSum - numAmount) <= 0.01 ? (
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
+                              ✓ Matches Total
+                            </span>
+                          ) : numAmount > 0 ? (
+                            <span className="text-[10px] font-semibold text-amber-500">
+                              (Diff: ₱{Math.abs(numAmount - itemsSum).toFixed(2)})
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* Additional Notes */}
                 <div className="space-y-1.5">

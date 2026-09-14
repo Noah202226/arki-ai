@@ -3,16 +3,31 @@ import type { ExtractedReceiptData } from "@/lib/receipt-parser";
 
 export type { ExtractedReceiptData };
 
+export type ScanStage =
+  | "preprocessing"
+  | "initializing"
+  | "recognizing"
+  | "parsing"
+  | null;
+
 interface ReceiptStore {
   isScanning: boolean;
   isConfirmOpen: boolean;
   isCameraOpen: boolean;
   scanProgressText: string;
+  scanProgressPercent: number;
+  scanStage: ScanStage;
   scanError: string | null;
   receiptImage: string | null;
+  rawOcrText: string | null;
   extractedData: ExtractedReceiptData | null;
 
-  setScanning: (isScanning: boolean, progressText?: string) => void;
+  setScanning: (
+    isScanning: boolean,
+    progressText?: string,
+    progressPercent?: number,
+    scanStage?: ScanStage
+  ) => void;
   setScanError: (error: string | null) => void;
   openManualEntry: (capturedImage?: string | null) => void;
   openConfirmModal: (data: ExtractedReceiptData, image: string | null) => void;
@@ -27,14 +42,28 @@ export const useReceiptStore = create<ReceiptStore>((set) => ({
   isConfirmOpen: false,
   isCameraOpen: false,
   scanProgressText: "Reading receipt with OCR...",
+  scanProgressPercent: 0,
+  scanStage: null,
   scanError: null,
   receiptImage: null,
+  rawOcrText: null,
   extractedData: null,
 
-  setScanning: (isScanning, progressText = "Reading receipt with OCR...") =>
-    set({ isScanning, scanProgressText: progressText, ...(isScanning ? { scanError: null } : {}) }),
+  setScanning: (
+    isScanning,
+    progressText = "Reading receipt with OCR...",
+    progressPercent = 0,
+    scanStage = null
+  ) =>
+    set({
+      isScanning,
+      scanProgressText: progressText,
+      scanProgressPercent: progressPercent,
+      scanStage,
+      ...(isScanning ? { scanError: null } : {}),
+    }),
 
-  setScanError: (error) => set({ scanError: error, isScanning: false }),
+  setScanError: (error) => set({ scanError: error, isScanning: false, scanStage: null }),
 
   openManualEntry: (capturedImage = null) =>
     set((state) => ({
@@ -52,7 +81,7 @@ export const useReceiptStore = create<ReceiptStore>((set) => ({
         items: [],
         notes: "Manually entered after photo review",
         confidence: "medium",
-        engine: "tesseract",
+        engine: "gemini",
       },
     })),
 
@@ -71,6 +100,7 @@ export const useReceiptStore = create<ReceiptStore>((set) => ({
       isConfirmOpen: false,
       extractedData: null,
       receiptImage: null,
+      rawOcrText: null,
       isScanning: false,
     }),
 
@@ -81,8 +111,12 @@ export const useReceiptStore = create<ReceiptStore>((set) => ({
     set({
       isScanning: false,
       isConfirmOpen: false,
+      scanProgressText: "Reading receipt with OCR...",
+      scanProgressPercent: 0,
+      scanStage: null,
       scanError: null,
       receiptImage: null,
+      rawOcrText: null,
       extractedData: null,
     }),
 }));

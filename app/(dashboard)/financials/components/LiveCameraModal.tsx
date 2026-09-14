@@ -21,6 +21,11 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useUser } from "@clerk/nextjs";
 
 interface LiveCameraModalProps {
   onCapture: (base64DataUrl: string) => void;
@@ -32,6 +37,11 @@ export function LiveCameraModal({
   onSelectFileFallback,
 }: LiveCameraModalProps) {
   const { isCameraOpen, closeCamera } = useReceiptStore();
+  const { user } = useUser();
+  const usageCount = useQuery(api.aiUsage.getTodayUsage, user ? { userId: user.id } : "skip") || 0;
+  const LIMIT = 1500;
+  const isOverLimit = usageCount >= LIMIT;
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -211,7 +221,15 @@ export function LiveCameraModal({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
+            {!capturedPreview && (
+              <div className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 flex items-center gap-1.5" title="Daily AI Quota">
+                 <Sparkles className={cn("w-3 h-3", isOverLimit ? "text-rose-500" : "text-amber-400")} />
+                 <span className={cn("text-[9px] font-bold font-mono tracking-widest", isOverLimit ? "text-rose-500" : "text-white/80")}>
+                    {usageCount}/{LIMIT}
+                 </span>
+              </div>
+            )}
             <Button
               type="button"
               variant="ghost"
@@ -225,7 +243,7 @@ export function LiveCameraModal({
         </div>
 
         {/* Viewfinder Area */}
-        <div className="relative w-full aspect-[4/3] sm:aspect-[16/10] bg-black flex items-center justify-center overflow-hidden">
+        <div className="relative w-full h-[65vh] sm:h-[70vh] bg-black flex items-center justify-center overflow-hidden">
           {/* Live Video Stream */}
           <video
             ref={videoRef}
@@ -269,7 +287,7 @@ export function LiveCameraModal({
           {!capturedPreview && hasPermission === true && (
             <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-6 z-10">
               {/* Receipt Target Box */}
-              <div className="relative w-[85%] sm:w-[75%] h-[80%] rounded-2xl border-2 border-white/40 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)] flex items-center justify-center">
+              <div className="relative w-[85%] sm:w-[60%] h-[85%] rounded-2xl border-2 border-white/40 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)] flex items-center justify-center">
                 {/* Corner Brackets */}
                 <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-[#ff6b35] rounded-tl-lg" />
                 <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-[#ff6b35] rounded-tr-lg" />

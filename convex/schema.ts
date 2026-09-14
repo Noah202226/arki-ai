@@ -284,4 +284,11 @@ export default defineSchema({
     transferredAt: v.number(),
     note: v.optional(v.string()),
   }).index("by_userId", ["userId"]),
+
+  // 12. AI USAGE TRACKING TABLE
+  aiUsage: defineTable({
+    userId: v.string(),
+    date: v.string(), // Format: YYYY-MM-DD
+    scansCount: v.number(),
+  }).index("by_userId_and_date", ["userId", "date"]),
 });

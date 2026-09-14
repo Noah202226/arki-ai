@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Camera, ScanLine, Receipt, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useUser } from "@clerk/nextjs";
+
 /**
  * ReceiptScanner: Hosts the live WebRTC camera modal,
  * fallback file picker input, and confirmation dialog.
@@ -103,6 +107,12 @@ export function ScanReceiptQuickBanner({
   onScanClick?: () => void;
 }) {
   const { triggerCamera, scanDemoReceipt, isScanning } = useReceiptScan();
+  const { user } = useUser();
+  const usageCount = useQuery(api.aiUsage.getTodayUsage, user ? { userId: user.id } : "skip") || 0;
+  
+  const LIMIT = 1500;
+  const isNearLimit = usageCount >= LIMIT - 100;
+  const isOverLimit = usageCount >= LIMIT;
 
   const handleScan = () => {
     if (onScanClick) onScanClick();
@@ -130,9 +140,37 @@ export function ScanReceiptQuickBanner({
                 Live Camera
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
               Open device camera to auto-extract merchant, total, date &amp; items
             </p>
+            {/* Usage Progress Bar */}
+            <div className="mt-2.5">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                  Daily AI Quota
+                </span>
+                <span className={cn(
+                  "text-[9px] font-mono font-bold",
+                  isOverLimit ? "text-rose-500" : isNearLimit ? "text-amber-500" : "text-slate-500"
+                )}>
+                  {usageCount} / {LIMIT}
+                </span>
+              </div>
+              <div className="h-1.5 w-full bg-slate-200/50 dark:bg-slate-800/50 rounded-full overflow-hidden">
+                <div 
+                  className={cn(
+                    "h-full rounded-full transition-all duration-500",
+                    isOverLimit ? "bg-rose-500" : isNearLimit ? "bg-amber-500" : "bg-emerald-500"
+                  )}
+                  style={{ width: `${Math.min(100, (usageCount / LIMIT) * 100)}%` }}
+                />
+              </div>
+              {isOverLimit && (
+                <p className="text-[9px] font-bold text-rose-500 mt-1 uppercase tracking-wide">
+                  ⚠️ AI limit exceeded. Scans may fail.
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
