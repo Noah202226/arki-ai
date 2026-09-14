@@ -1,17 +1,7 @@
 import { create } from "zustand";
+import type { ExtractedReceiptData } from "@/lib/receipt-parser";
 
-export interface ExtractedReceiptData {
-  merchant: string;
-  amount: number;
-  date: string;
-  categoryHint: string;
-  type: "expense" | "income";
-  tax?: number;
-  items: Array<{ name: string; price: number; quantity?: number }>;
-  notes: string;
-  confidence: "high" | "medium" | "low";
-  engine?: "tesseract" | "demo";
-}
+export type { ExtractedReceiptData };
 
 interface ReceiptStore {
   isScanning: boolean;

@@ -383,6 +383,8 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
                     "hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border",
                     extractedData.engine === "tesseract"
                       ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                      : extractedData.engine === "gemini"
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                       : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
                   )}
                 >
@@ -390,6 +392,8 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
                   <span>
                     {extractedData.engine === "tesseract"
                       ? "Tesseract OCR"
+                      : extractedData.engine === "gemini"
+                      ? "Gemini AI"
                       : "Demo Scan"}
                   </span>
                 </div>

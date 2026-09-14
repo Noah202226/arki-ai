@@ -2,8 +2,8 @@
 
 import { useRef, useCallback } from "react";
 import { toast } from "sonner";
-import { useReceiptStore, ExtractedReceiptData } from "@/app/store/use-receipt-store";
-import { parseReceiptText } from "@/lib/receipt-parser";
+import { useReceiptStore } from "@/app/store/use-receipt-store";
+import { parseReceiptText, type ExtractedReceiptData } from "@/lib/receipt-parser";
 
 /**
  * Downscales and applies contrast enhancement for ultra-fast, sharp Tesseract OCR.
