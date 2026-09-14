@@ -3,16 +3,16 @@
 import { useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { useReceiptStore, ExtractedReceiptData } from "@/app/store/use-receipt-store";
+import { parseReceiptText } from "@/lib/receipt-parser";
 
 /**
- * Downscales and compresses image before upload to avoid multi-megabyte payloads.
- * Targets max 1280px dimension and 0.80 JPEG quality (~150KB-250KB).
- * Wrapped with a 10s timeout to avoid hanging indefinitely on mobile image decoding.
+ * Downscales and applies contrast enhancement for ultra-fast, sharp Tesseract OCR.
+ * Targets max 1000px dimension and grayscale contrast boost (~80KB-160KB).
  */
-function compressImage(
+function compressAndPreprocessImage(
   dataUrl: string,
-  maxDimension = 1280,
-  quality = 0.8
+  maxDimension = 1000,
+  quality = 0.82
 ): Promise<{ dataUrl: string; mimeType: string }> {
   return new Promise((resolve) => {
     if (typeof window === "undefined" || !dataUrl.startsWith("data:image")) {
@@ -22,7 +22,7 @@ function compressImage(
 
     const timer = setTimeout(() => {
       resolve({ dataUrl, mimeType: "image/jpeg" });
-    }, 10000);
+    }, 8000);
 
     const img = new Image();
     img.onload = () => {
@@ -43,16 +43,32 @@ function compressImage(
       const canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
-      const ctx = canvas.getContext("2d");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
       if (!ctx) {
         resolve({ dataUrl, mimeType: "image/jpeg" });
         return;
       }
 
       ctx.drawImage(img, 0, 0, width, height);
+
+      // Contrast enhancement: darkens printed text and brightens background
       try {
-        const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
-        resolve({ dataUrl: compressedDataUrl, mimeType: "image/jpeg" });
+        const imgData = ctx.getImageData(0, 0, width, height);
+        const d = imgData.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+          const contrast = (gray - 128) * 1.3 + 128;
+          const clamped = Math.min(255, Math.max(0, contrast));
+          d[i] = clamped;
+          d[i + 1] = clamped;
+          d[i + 2] = clamped;
+        }
+        ctx.putImageData(imgData, 0, 0);
+      } catch {}
+
+      try {
+        const compressed = canvas.toDataURL("image/jpeg", quality);
+        resolve({ dataUrl: compressed, mimeType: "image/jpeg" });
       } catch {
         resolve({ dataUrl, mimeType: "image/jpeg" });
       }
@@ -67,6 +83,42 @@ function compressImage(
   });
 }
 
+/**
+ * Runs client-side Tesseract.js in a Web Worker with live progress callbacks.
+ */
+async function runClientTesseract(
+  imageDataUrl: string,
+  onProgress: (statusText: string) => void
+): Promise<ExtractedReceiptData> {
+  const { createWorker } = await import("tesseract.js");
+
+  const worker = await createWorker("eng", 1, {
+    logger: (m) => {
+      if (m.status === "recognizing text") {
+        const pct = Math.round((m.progress || 0) * 100);
+        onProgress(`Reading receipt text: ${pct}%`);
+      } else if (m.status === "loading language traineddata") {
+        const pct = Math.round((m.progress || 0) * 100);
+        onProgress(`Loading language model: ${pct}%`);
+      } else if (m.status === "loading tesseract core") {
+        onProgress("Initializing OCR engine...");
+      }
+    },
+  });
+
+  try {
+    const ret = await worker.recognize(imageDataUrl);
+    const rawText = ret?.data?.text || "";
+    await worker.terminate();
+    return parseReceiptText(rawText);
+  } catch (err) {
+    try {
+      await worker.terminate();
+    } catch {}
+    throw err;
+  }
+}
+
 export function useReceiptScan() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const {
@@ -74,11 +126,9 @@ export function useReceiptScan() {
     scanProgressText,
     scanError,
     isConfirmOpen,
-    isKeyPromptOpen,
     isCameraOpen,
     receiptImage,
     extractedData,
-    userApiKey,
     setScanning,
     setScanError,
     openManualEntry,
@@ -86,104 +136,71 @@ export function useReceiptScan() {
     closeConfirmModal,
     openCamera,
     closeCamera,
-    openKeyPrompt,
-    closeKeyPrompt,
-    setUserApiKey,
     reset,
   } = useReceiptStore();
 
   const scanReceiptBase64 = useCallback(
-    async (base64DataUrl: string, mimeType = "image/jpeg") => {
+    async (base64DataUrl: string) => {
       setScanning(true, "Optimizing & reading receipt with OCR...");
 
-      // Save preview immediately so if recognition fails, user can still inspect and manually enter
+      // Save photo preview in store immediately
       useReceiptStore.setState({ receiptImage: base64DataUrl });
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
-
       try {
-        const { dataUrl: optimizedBase64, mimeType: optimizedMime } = await compressImage(
+        const { dataUrl: optimizedBase64 } = await compressAndPreprocessImage(
           base64DataUrl
         );
 
         useReceiptStore.setState({ receiptImage: optimizedBase64 });
 
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-        };
+        let parsedData: ExtractedReceiptData | null = null;
 
-        const activeKey =
-          userApiKey ||
-          (typeof window !== "undefined"
-            ? localStorage.getItem("arki_gemini_api_key") || ""
-            : "");
-        if (activeKey) {
-          headers["x-gemini-key"] = activeKey;
-        }
-
-        const res = await fetch("/api/receipt/scan", {
-          method: "POST",
-          headers,
-          signal: controller.signal,
-          body: JSON.stringify({
-            imageBase64: optimizedBase64,
-            mimeType: optimizedMime,
-          }),
-        });
-
-        clearTimeout(timeoutId);
-
-        let json: any = null;
+        // 1. Primary: Run client-side Tesseract OCR in Web Worker
         try {
-          json = await res.json();
-        } catch {
-          const rawText = await res.text().catch(() => "");
-          throw new Error(
-            res.status === 413
-              ? "Image file was too large for server. Please try a smaller photo."
-              : `Server returned error (${res.status}): ${rawText.slice(0, 100) || "Invalid response"}`
-          );
+          parsedData = await runClientTesseract(optimizedBase64, (text) => {
+            setScanning(true, text);
+          });
+        } catch (clientErr) {
+          console.warn("Client Tesseract error, falling back to server OCR:", clientErr);
         }
 
-        if (!res.ok || !json?.ok) {
-          throw new Error(json?.message || "Failed to parse receipt from image.");
-        }
+        // 2. Fallback: If client worker encounters issue, call server route
+        if (!parsedData) {
+          setScanning(true, "Processing OCR on server...");
+          const res = await fetch("/api/receipt/scan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageBase64: optimizedBase64 }),
+          });
 
-        if (json.fallbackFrom) {
-          toast.info("Switched to OCR scanner (Gemini rate limit or quota reached).", { duration: 4000 });
-        } else if (json.data?.engine === "tesseract") {
-          toast.success("Receipt scanned via OCR! Please review the details.");
-        } else {
-          toast.success("Receipt scanned with AI! Please review the details.");
-        }
-
-        openConfirmModal(json.data as ExtractedReceiptData, optimizedBase64);
-      } catch (err: unknown) {
-        clearTimeout(timeoutId);
-        console.warn("Scan error:", err);
-
-        let msg = "Failed to scan receipt. Please try again.";
-        if (err instanceof Error) {
-          if (err.name === "AbortError") {
-            msg = "OCR processing timed out. Server or network is busy. You can enter details manually.";
-          } else {
-            msg = err.message;
+          const json = await res.json();
+          if (!res.ok || !json?.ok) {
+            throw new Error(json?.message || "Could not read text from receipt image.");
           }
+          parsedData = json.data as ExtractedReceiptData;
         }
+
+        toast.success("Receipt scanned via Tesseract OCR! Please verify details.");
+        openConfirmModal(parsedData, optimizedBase64);
+      } catch (err: unknown) {
+        console.warn("Scan error:", err);
+        const msg =
+          err instanceof Error
+            ? err.message
+            : "Could not read text from receipt. Please enter details manually.";
 
         setScanError(msg);
-        toast.error(msg, { duration: 6000 });
+        toast.error(msg, { duration: 5000 });
       }
     },
-    [userApiKey, setScanning, setScanError, openConfirmModal]
+    [setScanning, setScanError, openConfirmModal]
   );
 
   const scanReceiptFile = useCallback(
     async (file: File) => {
       if (!file) return;
 
-      // Mobile Android fallback: file.type can be empty string or application/octet-stream
+      // Mobile Android fallback: file.type can be empty or application/octet-stream
       const isImageMime = file.type && file.type.startsWith("image/");
       const isImageExt = /\.(jpe?g|png|webp|heic|heif|bmp|jfif|tiff?)$/i.test(file.name || "");
       const isLikelyImage = isImageMime || isImageExt || !file.type;
@@ -204,7 +221,7 @@ export function useReceiptScan() {
         });
 
         const base64DataUrl = await base64Promise;
-        await scanReceiptBase64(base64DataUrl, file.type || "image/jpeg");
+        await scanReceiptBase64(base64DataUrl);
       } catch (err: unknown) {
         console.error("File read error:", err);
         const msg = "Failed to read image file from device storage.";
@@ -229,7 +246,6 @@ export function useReceiptScan() {
 
       const json = await res.json();
       if (json.ok) {
-        // Sample receipt visual preview SVG
         const demoSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"><rect width="100%" height="100%" fill="%23fdfcf9"/><text x="50%" y="50" font-family="monospace" font-size="20" font-weight="bold" text-anchor="middle" fill="%23111">JOLLIBEE</text><text x="50%" y="75" font-family="monospace" font-size="12" text-anchor="middle" fill="%23555">Grand Central Branch</text><line x1="30" y1="95" x2="370" y2="95" stroke="%23ccc" stroke-dasharray="4"/><text x="35" y="130" font-family="monospace" font-size="13" fill="%23333">1x 2-pc Chickenjoy</text><text x="365" y="130" font-family="monospace" font-size="13" text-anchor="end" fill="%23333">₱220.00</text><text x="35" y="160" font-family="monospace" font-size="13" fill="%23333">1x Peach Mango Pie</text><text x="365" y="160" font-family="monospace" font-size="13" text-anchor="end" fill="%23333">₱110.00</text><text x="35" y="190" font-family="monospace" font-size="13" fill="%23333">1x Extra Gravy</text><text x="365" y="190" font-family="monospace" font-size="13" text-anchor="end" fill="%23333">₱55.00</text><line x1="30" y1="220" x2="370" y2="220" stroke="%23222" stroke-width="2"/><text x="35" y="260" font-family="monospace" font-size="16" font-weight="bold" fill="%23111">TOTAL AMOUNT</text><text x="365" y="260" font-family="monospace" font-size="18" font-weight="bold" text-anchor="end" fill="%23ff6b35">₱385.00</text><text x="50%" y="320" font-family="monospace" font-size="11" text-anchor="middle" fill="%23888">OR# 948271 • THANK YOU!</text></svg>`;
 
         openConfirmModal(json.data as ExtractedReceiptData, demoSvg);
@@ -269,11 +285,9 @@ export function useReceiptScan() {
     scanProgressText,
     scanError,
     isConfirmOpen,
-    isKeyPromptOpen,
     isCameraOpen,
     receiptImage,
     extractedData,
-    userApiKey,
     triggerCamera,
     triggerFileSelect,
     handleFileInputChange,
@@ -284,9 +298,6 @@ export function useReceiptScan() {
     closeConfirmModal,
     openCamera,
     closeCamera,
-    openKeyPrompt,
-    closeKeyPrompt,
-    setUserApiKey,
     reset,
   };
 }

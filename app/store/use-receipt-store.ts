@@ -10,19 +10,17 @@ export interface ExtractedReceiptData {
   items: Array<{ name: string; price: number; quantity?: number }>;
   notes: string;
   confidence: "high" | "medium" | "low";
-  engine?: "tesseract" | "gemini" | "demo";
+  engine?: "tesseract" | "demo";
 }
 
 interface ReceiptStore {
   isScanning: boolean;
   isConfirmOpen: boolean;
-  isKeyPromptOpen: boolean;
   isCameraOpen: boolean;
   scanProgressText: string;
   scanError: string | null;
   receiptImage: string | null;
   extractedData: ExtractedReceiptData | null;
-  userApiKey: string;
 
   setScanning: (isScanning: boolean, progressText?: string) => void;
   setScanError: (error: string | null) => void;
@@ -31,26 +29,19 @@ interface ReceiptStore {
   closeConfirmModal: () => void;
   openCamera: () => void;
   closeCamera: () => void;
-  openKeyPrompt: () => void;
-  closeKeyPrompt: () => void;
-  setUserApiKey: (key: string) => void;
   reset: () => void;
 }
-
-const STORAGE_KEY = "arki_gemini_api_key";
 
 export const useReceiptStore = create<ReceiptStore>((set) => ({
   isScanning: false,
   isConfirmOpen: false,
-  isKeyPromptOpen: false,
   isCameraOpen: false,
-  scanProgressText: "Analyzing receipt with AI...",
+  scanProgressText: "Reading receipt with OCR...",
   scanError: null,
   receiptImage: null,
   extractedData: null,
-  userApiKey: typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) || "" : "",
 
-  setScanning: (isScanning, progressText = "Analyzing receipt with AI...") =>
+  setScanning: (isScanning, progressText = "Reading receipt with OCR...") =>
     set({ isScanning, scanProgressText: progressText, ...(isScanning ? { scanError: null } : {}) }),
 
   setScanError: (error) => set({ scanError: error, isScanning: false }),
@@ -69,9 +60,9 @@ export const useReceiptStore = create<ReceiptStore>((set) => ({
         categoryHint: "General",
         type: "expense",
         items: [],
-        notes: "Manually entered after capture",
+        notes: "Manually entered after photo review",
         confidence: "medium",
-        engine: "demo",
+        engine: "tesseract",
       },
     })),
 
@@ -96,21 +87,10 @@ export const useReceiptStore = create<ReceiptStore>((set) => ({
   openCamera: () => set({ isCameraOpen: true }),
   closeCamera: () => set({ isCameraOpen: false }),
 
-  openKeyPrompt: () => set({ isKeyPromptOpen: true }),
-  closeKeyPrompt: () => set({ isKeyPromptOpen: false }),
-
-  setUserApiKey: (key: string) => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, key);
-    }
-    set({ userApiKey: key });
-  },
-
   reset: () =>
     set({
       isScanning: false,
       isConfirmOpen: false,
-      isKeyPromptOpen: false,
       scanError: null,
       receiptImage: null,
       extractedData: null,

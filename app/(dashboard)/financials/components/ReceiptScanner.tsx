@@ -4,7 +4,7 @@ import { useReceiptScan } from "@/app/(dashboard)/financials/hooks/use-receipt-s
 import { ReceiptConfirmDialog } from "@/app/(dashboard)/financials/components/ReceiptConfirmDialog";
 import { LiveCameraModal } from "@/app/(dashboard)/financials/components/LiveCameraModal";
 import { Button } from "@/components/ui/button";
-import { Camera, Sparkles, Receipt, ArrowRight } from "lucide-react";
+import { Camera, ScanLine, Receipt, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -87,8 +87,8 @@ export function ScanReceiptButton({
       </div>
       <span className="truncate">Scan Receipt</span>
       <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-[#ff6b35]/20 text-[#ff6b35] text-[9px] font-black uppercase tracking-wider">
-        <Sparkles className="w-2.5 h-2.5" />
-        AI
+        <ScanLine className="w-2.5 h-2.5" />
+        OCR
       </span>
     </Button>
   );

@@ -19,7 +19,6 @@ import {
   ScanLine,
   Check,
   Sparkles,
-  KeyRound,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -32,7 +31,7 @@ export function LiveCameraModal({
   onCapture,
   onSelectFileFallback,
 }: LiveCameraModalProps) {
-  const { isCameraOpen, closeCamera, openKeyPrompt } = useReceiptStore();
+  const { isCameraOpen, closeCamera } = useReceiptStore();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -217,19 +216,6 @@ export function LiveCameraModal({
               type="button"
               variant="ghost"
               size="icon-sm"
-              onClick={() => {
-                handleClose();
-                openKeyPrompt();
-              }}
-              title="Configure Gemini API Key"
-              className="rounded-full text-white/70 hover:text-[#ff6b35] hover:bg-white/10"
-            >
-              <KeyRound className="w-4 h-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
               onClick={handleClose}
               className="rounded-full text-white/70 hover:text-white hover:bg-white/10"
             >
@@ -367,8 +353,8 @@ export function LiveCameraModal({
               onClick={handleAcceptCapture}
               className="h-11 px-5 rounded-xl font-extrabold text-xs bg-gradient-to-r from-[#ff6b35] to-orange-500 hover:from-orange-600 hover:to-[#ff6b35] text-white shadow-lg shadow-[#ff6b35]/25 flex items-center gap-2 transition-all active:scale-[0.98]"
             >
-              <Sparkles className="w-4 h-4" />
-              <span>Analyze &amp; Extract Details</span>
+              <ScanLine className="w-4 h-4" />
+              <span>Scan Receipt (OCR)</span>
             </Button>
           </div>
         ) : (

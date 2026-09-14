@@ -44,8 +44,6 @@ import {
   Loader2,
   RefreshCw,
   Camera,
-  KeyRound,
-  ExternalLink,
   Sparkles,
   ShoppingBag,
   FileText,
@@ -66,19 +64,14 @@ interface ReceiptConfirmDialogProps {
 export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
   const {
     isConfirmOpen,
-    isKeyPromptOpen,
     isScanning,
     scanProgressText,
     scanError,
     receiptImage,
     extractedData,
-    userApiKey,
     setScanError,
     openManualEntry,
-    openKeyPrompt,
     closeConfirmModal,
-    closeKeyPrompt,
-    setUserApiKey,
   } = useReceiptStore();
 
   const addTransaction = useMutation(api.financials.addTransaction);
@@ -95,9 +88,6 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImageZoomed, setIsImageZoomed] = useState(false);
-
-  // Key prompt input state
-  const [inputKey, setInputKey] = useState(userApiKey || "");
 
   // Pre-fill form when extractedData changes
   useEffect(() => {
@@ -264,18 +254,6 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
     }
   };
 
-  const handleSaveKey = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputKey.trim()) {
-      toast.error("Please enter a valid Gemini API key.");
-      return;
-    }
-    setUserApiKey(inputKey.trim());
-    closeKeyPrompt();
-    toast.success("Gemini API key saved! You can now scan receipts.");
-    if (onRetake) onRetake();
-  };
-
   return (
     <>
       {/* 1. SCANNING IN-PROGRESS & ERROR RECOVERY MODAL */}
@@ -322,31 +300,17 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
                   <span>Inspect Photo &amp; Enter Manually</span>
                 </Button>
 
-                {/* 2. Secondary: Configure Gemini Key for instant cloud AI */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setScanError(null);
-                    openKeyPrompt();
-                  }}
-                  className="w-full h-10 rounded-xl font-bold text-xs border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-[#ff6b35] flex items-center justify-center gap-2"
-                >
-                  <KeyRound className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Use Free Gemini AI Key (2s Scan)</span>
-                </Button>
-
-                {/* 3. Retake or Dismiss */}
+                {/* 2. Retake or Dismiss */}
                 <div className="flex items-center gap-2 pt-1">
                   {onRetake && (
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       onClick={() => {
                         setScanError(null);
                         onRetake();
                       }}
-                      className="flex-1 h-9 rounded-xl font-bold text-xs text-slate-600 dark:text-slate-400 hover:text-[#ff6b35]"
+                      className="flex-1 h-10 rounded-xl font-bold text-xs border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-[#ff6b35]"
                     >
                       <RefreshCw className="w-3.5 h-3.5 mr-1" />
                       Retake Photo
@@ -356,7 +320,7 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
                     type="button"
                     variant="ghost"
                     onClick={() => setScanError(null)}
-                    className="flex-1 h-9 rounded-xl font-bold text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                    className="flex-1 h-10 rounded-xl font-bold text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white"
                   >
                     Dismiss
                   </Button>
@@ -376,7 +340,7 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
 
               <DialogHeader className="space-y-1.5 text-center">
                 <DialogTitle className="text-base font-extrabold text-slate-900 dark:text-slate-50 tracking-tight text-center">
-                  AI Receipt Scanner
+                  Tesseract Receipt OCR
                 </DialogTitle>
                 <DialogDescription className="text-xs font-semibold text-slate-500 dark:text-slate-400 text-center">
                   {scanProgressText}
@@ -392,69 +356,7 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
         </DialogContent>
       </Dialog>
 
-      {/* 2. API KEY SETUP PROMPT DIALOG (IF GEMINI_API_KEY IS MISSING) */}
-      <Dialog open={isKeyPromptOpen} onOpenChange={(open) => !open && closeKeyPrompt()}>
-        <DialogContent className="w-[92vw] sm:max-w-md rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl p-6">
-          <DialogHeader className="space-y-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-            <DialogTitle className="flex items-center gap-2.5 text-lg font-black text-slate-900 dark:text-slate-50">
-              <div className="p-2 rounded-xl bg-[#ff6b35]/10 text-[#ff6b35]">
-                <KeyRound className="w-5 h-5" />
-              </div>
-              Gemini Vision API Key
-            </DialogTitle>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              To scan physical receipts directly with Google Gemini AI, please provide your free API key. It will be stored safely in your browser.
-            </p>
-          </DialogHeader>
-
-          <form onSubmit={handleSaveKey} className="space-y-4 pt-3">
-            <div className="space-y-1.5">
-              <Label className="text-[10px] uppercase font-bold text-slate-400">
-                Google Gemini API Key
-              </Label>
-              <Input
-                type="password"
-                placeholder="AIzaSy..."
-                value={inputKey}
-                onChange={(e) => setInputKey(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 h-11 px-3.5 font-mono text-xs rounded-xl focus-visible:ring-2 focus-visible:ring-[#ff6b35]"
-                required
-              />
-            </div>
-
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
-              <span>Don&apos;t have a key?</span>
-              <a
-                href="https://aistudio.google.com/app/apikey"
-                target="_blank"
-                rel="noreferrer"
-                className="text-[#ff6b35] hover:underline font-bold inline-flex items-center gap-1"
-              >
-                Get Free Gemini Key <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={closeKeyPrompt}
-                className="flex-1 rounded-xl h-11 font-bold text-xs"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                className="flex-1 rounded-xl h-11 font-extrabold text-xs bg-[#ff6b35] hover:bg-[#e05a2b] text-white shadow-md shadow-[#ff6b35]/25"
-              >
-                Save &amp; Scan
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* 3. MAIN CONFIRMATION MODAL (ADHERES TO RESPONSIVE SIZING RULE) */}
+      {/* 2. MAIN CONFIRMATION MODAL (ADHERES TO RESPONSIVE SIZING RULE) */}
       <Dialog open={isConfirmOpen} onOpenChange={(open) => !open && closeConfirmModal()}>
         <DialogContent className="w-[94vw] sm:max-w-[92vw] lg:max-w-5xl xl:max-w-6xl max-h-[90vh] overflow-y-auto p-0 rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl">
           {/* MODAL HEADER */}
@@ -481,17 +383,13 @@ export function ReceiptConfirmDialog({ onRetake }: ReceiptConfirmDialogProps) {
                     "hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border",
                     extractedData.engine === "tesseract"
                       ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
-                      : extractedData.engine === "gemini"
-                      ? "bg-[#ff6b35]/10 text-[#ff6b35] border-[#ff6b35]/30"
                       : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
                   )}
                 >
-                  <Sparkles className="w-3 h-3 shrink-0" />
+                  <ScanLine className="w-3 h-3 shrink-0" />
                   <span>
                     {extractedData.engine === "tesseract"
                       ? "Tesseract OCR"
-                      : extractedData.engine === "gemini"
-                      ? "Gemini AI Vision"
                       : "Demo Scan"}
                   </span>
                 </div>
